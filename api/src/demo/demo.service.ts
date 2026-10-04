@@ -1,7 +1,8 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { applySeed, todayUtc } from '../seed/apply-seed';
+import { applySeed } from '../seed/apply-seed';
+import { todayInLagos } from '../common/dates';
 import { DEMO_BUSINESS_ID } from '../seed/seed-data';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class DemoService {
     }
     const counts = await this.prisma.$transaction(
       (tx) =>
-        applySeed(tx, todayUtc(), {
+        applySeed(tx, todayInLagos(), {
           audit: 'Demo reset to original sample data',
         }),
       { timeout: 60_000, maxWait: 20_000 },

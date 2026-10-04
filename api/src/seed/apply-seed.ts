@@ -78,5 +78,3 @@ export async function applySeed(
     importedRows: data.importedRows.length,
   };
 }
-
-export const todayUtc = () => new Date().toISOString().slice(0, 10);

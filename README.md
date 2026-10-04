@@ -6,7 +6,7 @@ Portfolio demo of a simple finance tracker for small Nigerian businesses: sales,
 
 ## Status
 
-**Phase 1 (foundation) complete. Phase 2 (database) written; needs your first migration run (see below).** API features and the real UI come in later phases.
+Phases 1 to 3 are complete (foundation, database layer, full backend). Phases 4 to 7 (UI, reconciliation UI, polish, deployment) are next. Details and rules: [`docs/PHASES.md`](docs/PHASES.md).
 
 ## Structure
 
@@ -50,18 +50,36 @@ Production deploys use `npm run db:deploy` (`prisma migrate deploy`).
 
 **Reset demo:** `POST /api/demo/reset` restores the original sample data in one database transaction. It only works while `DEMO_MODE=true` and is rate limited.
 
+## API overview (Swagger at `/api/docs`)
+
+| Area | Endpoints |
+|------|-----------|
+| Health / demo | `GET /api/health`, `GET /api/demo/workspace`, `POST /api/demo/reset` |
+| Dashboard | `GET /api/dashboard` |
+| Quick actions | `POST /api/sales`, `POST /api/expenses` |
+| Customers | `GET/POST /api/customers`, `GET/PATCH /api/customers/:id`, `POST /api/customers/:id/archive`, `.../restore`, `POST /api/customers/:id/payments` ("Customer paid me") |
+| Invoices | `GET/POST /api/invoices`, `GET/PATCH/DELETE /api/invoices/:id`, `POST .../issue`, `.../void` |
+| Payments | `GET/POST /api/invoices/:id/payments` |
+| Transactions | `GET/POST /api/transactions`, `GET/PATCH/DELETE /api/transactions/:id`, `GET /api/transactions/categories` |
+| Reports | `GET /api/reports/summary`, `/timeseries`, `/customers-owing`, `/export?type=transactions|invoices|customers-owing` |
+| Reconciliation | `GET /api/reconciliation/template`, `POST /preview`, `POST /imports`, `GET /imports`, `GET /imports/:id`, `POST /rows/:id/confirm`, `POST /rows/:id/reject` |
+| Audit | `GET /api/audit` |
+
+Money values are strings with two decimals (for example `"25000.00"`). The backend calculates every total, balance and status.
+
 ## Checks
 
 ```bash
 npm run lint
-npm test
-npm run test:e2e
+npm test              # unit tests
+npm run test:e2e      # wiring, database stubbed
+npm run test:int      # full API on a throwaway real Postgres (starts and stops itself)
 npm run build
 ```
 
 ## Environment variables
 
-API (`api/.env`): `PORT`, `NODE_ENV`, `CORS_ORIGIN` (comma-separated), `DEMO_MODE`, `DATABASE_URL` (used from Phase 2).
+API (`api/.env`): `PORT`, `NODE_ENV`, `CORS_ORIGIN` (comma-separated), `DEMO_MODE`, `DATABASE_URL`, `DIRECT_URL`. Tests only: `THROTTLE_DISABLED=true` turns off rate limiting.
 Web (`web/.env.local`): `NEXT_PUBLIC_API_URL`.
 
 Never commit real values. Only `.env.example` files are tracked.
