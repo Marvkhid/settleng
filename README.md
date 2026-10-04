@@ -6,7 +6,7 @@ Portfolio demo of a simple finance tracker for small Nigerian businesses: sales,
 
 ## Status
 
-**Phase 1 (foundation) complete.** Database, API features and the real UI come in later phases. See the master specification for the full plan.
+**Phase 1 (foundation) complete. Phase 2 (database) written; needs your first migration run (see below).** API features and the real UI come in later phases.
 
 ## Structure
 
@@ -17,7 +17,7 @@ settleng/
 └── package.json   convenience scripts
 ```
 
-Planned later: Prisma + PostgreSQL (Phase 2).
+Database: Prisma 7 + PostgreSQL. Supabase is used **only as the managed Postgres host** (no supabase-js, Supabase Auth or Storage).
 
 ## Local setup
 
@@ -30,6 +30,25 @@ cp web/.env.example web/.env.local
 npm run dev:api   # http://localhost:4000/api/health, docs at /api/docs
 npm run dev:web   # http://localhost:3000
 ```
+
+## Database (Supabase as plain Postgres)
+
+1. In Supabase: **Project Settings > Database > Connection string**. Copy the *transaction pooler* URL (port 6543) and the *session pooler / direct* URL (port 5432).
+2. Put them in `api/.env` as `DATABASE_URL` (pooled, port 6543) and `DIRECT_URL`. Never commit this file.
+3. Create the tables and load sample data:
+
+```bash
+cd api
+npx prisma migrate dev --name init   # creates prisma/migrations and applies it (uses DIRECT_URL)
+npm run db:seed                      # loads Adeola Mini Mart sample data (repeatable)
+```
+
+4. Paste `api/prisma/enable-rls.sql` into the Supabase SQL editor and run it once. It blocks Supabase's built-in public API from reading your tables; the NestJS API is the only way in.
+5. Commit the generated `api/prisma/migrations/` folder.
+
+Production deploys use `npm run db:deploy` (`prisma migrate deploy`).
+
+**Reset demo:** `POST /api/demo/reset` restores the original sample data in one database transaction. It only works while `DEMO_MODE=true` and is rate limited.
 
 ## Checks
 
@@ -55,6 +74,7 @@ Never commit real values. Only `.env.example` files are tracked.
 
 ## Notes
 
+- Prisma 7 (driver adapter `@prisma/adapter-pg`); `prisma generate` runs on install and before build. Generated client lives in `api/src/generated` (git-ignored).
 - NestJS is pinned to the 11.x line because it ships with Jest and ESLint as the spec requires; the newest Nest CLI scaffolds Vitest instead.
 - Inter is self-hosted from `web/app/fonts` so builds never depend on Google Fonts.
 - shadcn components are added by hand-compatible structure (`components.json`, `lib/utils.ts`); further components are added in Phase 4.

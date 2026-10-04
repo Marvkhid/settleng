@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  POS
+  CREDIT
+}
+
+enum TransactionSource {
+  MANUAL
+  INVOICE_PAYMENT
+  IMPORTED
+}
+
+enum ImportStatus {
+  PENDING_REVIEW
+  COMPLETED
+}
+
+enum ImportDirection {
+  IN
+  OUT
+}
+
+enum MatchStatus {
+  VALID
+  INVALID
+  DUPLICATE
+  UNMATCHED
+  SUGGESTED_MATCH
+  MATCHED
+}
+
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  currency  String   @default("NGN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customers             Customer[]
+  invoices              Invoice[]
+  transactions          Transaction[]
+  reconciliationImports ReconciliationImport[]
+  auditEvents           AuditEvent[]
+}
+
+model Customer {
+  id         String    @id @default(cuid())
+  businessId String
+  name       String
+  email      String?
+  phone      String?
+  notes      String?
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  invoices     Invoice[]
+  transactions Transaction[]
+
+  @@index([businessId, name])
+}
+
+model Invoice {
+  id            String    @id @default(cuid())
+  businessId    String
+  customerId    String
+  invoiceNumber String
+  issueDate     DateTime  @db.Date
+  dueDate       DateTime  @db.Date
+  isDraft       Boolean   @default(false)
+  voidedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  business         Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer         Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items            InvoiceItem[]
+  payments         InvoicePayment[]
+  importedMatches  ImportedTransaction[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, dueDate])
+  @@index([customerId])
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Decimal @db.Decimal(12, 2)
+  unitPrice   Decimal @db.Decimal(14, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model InvoicePayment {
+  id          String        @id @default(cuid())
+  invoiceId   String
+  amount      Decimal       @db.Decimal(14, 2)
+  paymentDate DateTime      @db.Date
+  method      PaymentMethod
+  reference   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  transaction Transaction?
+
+  @@index([invoiceId])
+}
+
+model Transaction {
+  id                     String            @id @default(cuid())
+  businessId             String
+  customerId             String?
+  type                   TransactionType
+  source                 TransactionSource @default(MANUAL)
+  paymentMethod          PaymentMethod?
+  amount                 Decimal           @db.Decimal(14, 2)
+  category               String
+  date                   DateTime          @db.Date
+  description            String?
+  reference              String?
+  invoicePaymentId       String?           @unique
+  importedTransactionId  String?           @unique
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  business            Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer            Customer?             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoicePayment      InvoicePayment?       @relation(fields: [invoicePaymentId], references: [id], onDelete: Restrict)
+  importedTransaction ImportedTransaction?  @relation(fields: [importedTransactionId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, date])
+  @@index([businessId, type, date])
+  @@index([businessId, category])
+}
+
+model ReconciliationImport {
+  id         String       @id @default(cuid())
+  businessId String
+  filename   String
+  status     ImportStatus @default(PENDING_REVIEW)
+  rowCount   Int
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  business Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  rows     ImportedTransaction[]
+
+  @@index([businessId])
+}
+
+model ImportedTransaction {
+  id                   String          @id @default(cuid())
+  importId             String
+  externalReference    String?
+  date                 DateTime?       @db.Date
+  description          String?
+  amount               Decimal?        @db.Decimal(14, 2)
+  direction            ImportDirection?
+  matchStatus          MatchStatus
+  matchedInvoiceId     String?
+  suggestedInvoiceId   String?
+  createdTransactionId String?
+  rawRowNumber         Int
+  note                 String?
+
+  import             ReconciliationImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  matchedInvoice     Invoice?             @relation(fields: [matchedInvoiceId], references: [id], onDelete: Restrict)
+  createdTransaction Transaction?
+
+  @@index([importId])
+  @@index([externalReference])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  businessId String
+  action     String
+  entityType String
+  entityId   String?
+  summary    String
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt])
+}

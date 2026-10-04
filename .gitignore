@@ -11,3 +11,5 @@ coverage/
 .DS_Store
 .vercel/
 npm-debug.log*
+
+**/src/generated/
