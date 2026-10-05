@@ -23,7 +23,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test:int": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-int.json --runInBand"
+    "test:int": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-int.json --runInBand",
+    "dev:local": "node scripts/dev-local.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

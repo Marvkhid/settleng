@@ -11,6 +11,7 @@
     "test": "npm test --prefix api",
     "test:e2e": "npm run test:e2e --prefix api",
     "test:int": "npm run test:int --prefix api",
-    "db:seed": "npm run db:seed --prefix api"
+    "db:seed": "npm run db:seed --prefix api",
+    "preview": "node scripts/preview.mjs"
   }
 }

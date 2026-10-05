@@ -1,28 +1,36 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-lg text-base font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+export const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 select-none whitespace-nowrap",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outline: "border border-border bg-card text-foreground hover:bg-muted",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        primary: "bg-emerald text-white hover:bg-emerald-ink",
+        dark: "bg-ink text-white hover:bg-ink-soft",
+        outline: "border border-line bg-surface text-ink hover:bg-sunken",
+        ghost: "text-ink hover:bg-sunken",
+        danger: "bg-red text-white hover:bg-red/90",
+        dangerOutline: "border border-red/40 bg-surface text-red hover:bg-red-wash",
       },
-      size: { default: "h-12 px-6", sm: "h-10 px-4 text-sm" },
+      size: { md: "h-12 px-5 text-base", sm: "h-10 px-4 text-sm", lg: "h-14 px-7 text-lg", icon: "h-11 w-11" },
     },
-    defaultVariants: { variant: "default", size: "default" },
+    defaultVariants: { variant: "primary", size: "md" },
   },
 );
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
-
-export function Button({ className, variant, size, ...props }: ButtonProps) {
-  return <button className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+  loading?: boolean;
 }
 
-export { buttonVariants };
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant, size, loading, disabled, children, type = "button", ...props }, ref) {
+  return (
+    <button ref={ref} type={type} className={cn(buttonVariants({ variant, size }), className)} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
+      {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+      {children}
+    </button>
+  );
+});

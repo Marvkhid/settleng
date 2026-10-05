@@ -1,46 +1,63 @@
 @import "tailwindcss";
 
-/* SettleNG design tokens: warm off-white, deep navy, emerald accent. */
+/* SettleNG design tokens. Warm paper, deep navy ink, emerald for money coming in. */
 :root {
-  --background: #faf8f4;
-  --foreground: #0f1b33;
-  --card: #ffffff;
-  --card-foreground: #0f1b33;
-  --muted: #f1eee8;
-  --muted-foreground: #5b6578;
-  --border: #e4e0d8;
-  --primary: #0f9d6e;
-  --primary-foreground: #ffffff;
-  --destructive: #c0392b;
-  --destructive-foreground: #ffffff;
-  --ring: #0f9d6e;
+  --paper: #faf8f4;
+  --surface: #ffffff;
+  --sunken: #f3f0e9;
+  --ink: #0f1b33;
+  --ink-soft: #2a3855;
+  --slate: #5b6578;
+  --line: #e4e0d8;
+  --emerald: #0f9d6e;
+  --emerald-ink: #0a7a55;
+  --emerald-wash: #e4f4ed;
+  --red: #b83227;
+  --red-wash: #fbe9e6;
+  --amber: #9a6410;
+  --amber-wash: #fbf0dc;
   --radius: 0.75rem;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-ring: var(--ring);
-  --radius-lg: var(--radius);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-slate: var(--slate);
+  --color-line: var(--line);
+  --color-emerald: var(--emerald);
+  --color-emerald-ink: var(--emerald-ink);
+  --color-emerald-wash: var(--emerald-wash);
+  --color-red: var(--red);
+  --color-red-wash: var(--red-wash);
+  --color-amber: var(--amber);
+  --color-amber-wash: var(--amber-wash);
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
+html { scroll-padding-top: 5rem; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 1rem; line-height: 1.5; }
+h1, h2, h3, .font-display { font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.02em; }
+.figure { font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+:focus-visible { outline: 3px solid var(--emerald); outline-offset: 2px; border-radius: 6px; }
+
+/* The one memorable element: a ruled-notebook panel, the paper the product replaces. */
+.ruled {
+  background-color: var(--ink);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(255, 255, 255, 0.07) 31px, rgba(255, 255, 255, 0.07) 32px);
 }
 
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+@keyframes sheet-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.sheet-in { animation: sheet-in 180ms ease-out; }
+.fade-in { animation: fade-in 150ms ease-out; }

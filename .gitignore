@@ -13,3 +13,7 @@ coverage/
 npm-debug.log*
 
 **/src/generated/
+
+.local-pg/
+
+e2e-failure-*.png

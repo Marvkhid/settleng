@@ -6,7 +6,7 @@ Portfolio demo of a simple finance tracker for small Nigerian businesses: sales,
 
 ## Status
 
-Phases 1 to 3 are complete (foundation, database layer, full backend). Phases 4 to 7 (UI, reconciliation UI, polish, deployment) are next. Details and rules: [`docs/PHASES.md`](docs/PHASES.md).
+Phases 1 to 4 are complete (foundation, database layer, backend, and the web app). Next: the CSV upload and review screen, polish, and deployment. Details and rules: [`docs/PHASES.md`](docs/PHASES.md).
 
 ## Structure
 
@@ -18,6 +18,15 @@ settleng/
 ```
 
 Database: Prisma 7 + PostgreSQL. Supabase is used **only as the managed Postgres host** (no supabase-js, Supabase Auth or Storage).
+
+## Quick look (no database or accounts needed)
+
+```bash
+npm run install:all
+npm run preview
+```
+
+Then open http://localhost:3000. This runs a throwaway local Postgres with the sample business, the API and the web app together.
 
 ## Local setup
 
