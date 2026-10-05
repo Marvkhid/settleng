@@ -34,7 +34,7 @@ export function DemoBadge({ className }: { className?: string }) {
 
 function Wordmark() {
   return (
-    <Link href="/dashboard" className="font-display text-2xl font-extrabold tracking-tight text-ink">
+    <Link href="/dashboard" className="inline-flex min-h-11 items-center font-display text-2xl font-extrabold tracking-tight text-ink">
       Settle<span className="text-emerald">NG</span>
     </Link>
   );
@@ -96,7 +96,7 @@ function BottomBar() {
         {tab(PRIMARY[3])}
         <div className="flex flex-1 justify-center">
           <button type="button" onClick={openMenu} aria-label="Record a sale, expense or payment"
-            className="-mt-5 flex size-16 items-center justify-center rounded-full bg-emerald text-white shadow-lg ring-4 ring-paper active:bg-emerald-ink">
+            className="-mt-5 flex size-16 items-center justify-center rounded-full bg-emerald-ink text-white shadow-lg ring-4 ring-paper active:bg-emerald-deep">
             <Plus className="size-8" aria-hidden />
           </button>
         </div>

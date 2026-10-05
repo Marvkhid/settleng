@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { refreshAll } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { customerSchema, type CustomerForm } from "@/lib/schemas";
 import type { CustomerSummary } from "@/types/api";
 
 function Body({ customer, onDone }: { customer?: CustomerSummary; onDone: (c: CustomerSummary) => void }) {
+  const once = useSingleFlight();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CustomerForm>({
     resolver: zodResolver(customerSchema),
     defaultValues: { name: customer?.name ?? "", phone: customer?.phone ?? "", email: customer?.email ?? "", notes: customer?.notes ?? "" },
@@ -24,7 +26,7 @@ function Body({ customer, onDone }: { customer?: CustomerSummary; onDone: (c: Cu
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't save this customer. Please try again."); }
   });
   return (
-    <form onSubmit={submit} className="space-y-4" noValidate>
+    <form onSubmit={once(submit)} className="space-y-4" noValidate>
       <Field label="Name" htmlFor="c-name" error={errors.name?.message}><Input id="c-name" autoFocus autoComplete="off" aria-invalid={!!errors.name} {...register("name")} /></Field>
       <Field label="Phone" htmlFor="c-phone" optional error={errors.phone?.message}><Input id="c-phone" type="tel" inputMode="tel" {...register("phone")} /></Field>
       <Field label="Email" htmlFor="c-email" optional error={errors.email?.message}><Input id="c-email" type="email" {...register("email")} /></Field>

@@ -14,17 +14,23 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
     style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6578' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")" }} {...p}>{children}</select>;
 });
 
-/** Label + control + hint + accessible error text. */
+/** Label + control + hint + accessible error text. The control is automatically linked to its error and hint. */
 export function Field({ label, htmlFor, error, hint, optional, children, className }: {
   label: string; htmlFor: string; error?: string; hint?: string; optional?: boolean; children: React.ReactNode; className?: string;
 }) {
+  const describedBy = error ? `${htmlFor}-error` : hint ? `${htmlFor}-hint` : undefined;
+  const linked = React.Children.map(children, (child) =>
+    React.isValidElement<{ id?: string }>(child) && child.props.id === htmlFor
+      ? React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })
+      : child,
+  );
   return (
     <div className={cn("space-y-1.5", className)}>
       <label htmlFor={htmlFor} className="block text-sm font-semibold text-ink">
         {label}{optional && <span className="ml-1 font-normal text-slate">(optional)</span>}
       </label>
-      {children}
-      {hint && !error && <p className="text-sm text-slate">{hint}</p>}
+      {linked}
+      {hint && !error && <p id={`${htmlFor}-hint`} className="text-sm text-slate">{hint}</p>}
       {error && <p id={`${htmlFor}-error`} role="alert" className="text-sm font-medium text-red">{error}</p>}
     </div>
   );

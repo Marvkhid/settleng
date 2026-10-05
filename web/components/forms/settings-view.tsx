@@ -7,18 +7,20 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ErrorState, Skeleton } from "@/components/ui/states";
 import { refreshAll, useQuery } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 
 export function SettingsView() {
+  const once = useSingleFlight();
   const q = useQuery(() => api.workspace(), []);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const reset = async () => {
+  const reset = once(async () => {
     setBusy(true);
     try { await api.resetDemo(); toast.success("Demo reset"); refreshAll(); setOpen(false); }
     catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't reset the demo. Please try again."); setOpen(false); }
     finally { setBusy(false); }
-  };
+  });
   return (
     <>
       <PageHeader title="Settings" />

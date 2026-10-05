@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 import { ErrorState, Skeleton } from "@/components/ui/states";
 import { refreshAll, useQuery } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { addDays, formatNaira, todayIso } from "@/lib/format";
 import { invoiceSchema, type InvoiceForm } from "@/lib/schemas";
@@ -16,6 +17,7 @@ import type { InvoiceView } from "@/types/api";
 const clean = (v: string) => v.replace(/[₦,\s]/g, "");
 
 export function InvoiceFormView({ invoice }: { invoice?: InvoiceView }) {
+  const once = useSingleFlight();
   const router = useRouter();
   const preselected = useSearchParams().get("customerId") ?? "";
   const customers = useQuery(() => api.customers({ pageSize: 100 }), []);
@@ -54,7 +56,7 @@ export function InvoiceFormView({ invoice }: { invoice?: InvoiceView }) {
   const extra = invoice && !options.some((c) => c.id === invoice.customer.id) ? [{ id: invoice.customer.id, name: invoice.customer.name }] : [];
 
   return (
-    <form onSubmit={save(false)} className="space-y-6" noValidate>
+    <form onSubmit={once(save(false))} className="space-y-6" noValidate>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Customer" htmlFor="i-customer" error={errors.customerId?.message} hint={hasPayments ? "The customer can't change once a payment is recorded." : undefined}>
           <Select id="i-customer" disabled={hasPayments} aria-invalid={!!errors.customerId} {...register("customerId")}>
@@ -99,7 +101,7 @@ export function InvoiceFormView({ invoice }: { invoice?: InvoiceView }) {
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button type="submit" size="lg" loading={isSubmitting}>{isSubmitting ? "Saving…" : invoice ? "Save changes" : "Create invoice"}</Button>
-        {!invoice && <Button type="button" variant="outline" size="lg" disabled={isSubmitting} onClick={() => void save(true)()}>Save as draft</Button>}
+        {!invoice && <Button type="button" variant="outline" size="lg" disabled={isSubmitting} onClick={() => void once(save(true))()}>Save as draft</Button>}
         <Button type="button" variant="ghost" size="lg" onClick={() => router.back()}>Cancel</Button>
       </div>
     </form>

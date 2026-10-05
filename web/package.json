@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:e2e": "node e2e/flows.mjs"
+    "test:e2e": "node e2e/flows.mjs",
+    "test:qa": "node e2e/qa.mjs",
+    "test:a11y": "node e2e/a11y-audit.mjs",
+    "test:api-down": "node e2e/api-down.mjs",
+    "test:browser": "node e2e/flows.mjs && node e2e/qa.mjs && node e2e/a11y-audit.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -31,6 +35,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "axe-core": "^4.13.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "puppeteer-core": "^25.12.0",

@@ -11,11 +11,13 @@ import { ConfirmDialog, Sheet } from "@/components/ui/dialog";
 import { ErrorState, NotFoundState, Skeleton } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { refreshAll, useQuery } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { formatNaira, friendlyDate, METHOD_LABEL } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function CustomerDetailView() {
+  const once = useSingleFlight();
   const { id } = useParams<{ id: string }>();
   const q = useQuery(() => api.customer(id), [id]);
   const [editing, setEditing] = useState(false);
@@ -29,13 +31,13 @@ export function CustomerDetailView() {
   const c = q.data;
   const owes = Number(c.amountOwing) > 0;
 
-  const toggleArchive = async () => {
+  const toggleArchive = once(async () => {
     setBusy(true);
     try {
       if (c.archived) await api.restoreCustomer(c.id); else await api.archiveCustomer(c.id);
       toast.success(c.archived ? "Customer restored" : "Customer archived"); refreshAll(); setArchiving(false);
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't do that. Please try again."); setArchiving(false); } finally { setBusy(false); }
-  };
+  });
 
   return (
     <div>
@@ -44,7 +46,7 @@ export function CustomerDetailView() {
         <div>
           <h1 className="text-3xl font-extrabold md:text-4xl">{c.name}</h1>
           <p className="mt-1 flex flex-wrap items-center gap-x-4 text-slate">
-            {c.phone && <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1 font-semibold text-ink-soft"><Phone className="size-4" aria-hidden /> {c.phone}</a>}
+            {c.phone && <a href={`tel:${c.phone}`} className="inline-flex min-h-11 items-center gap-1 font-semibold text-ink-soft"><Phone className="size-4" aria-hidden /> {c.phone}</a>}
             {c.email && <span>{c.email}</span>}
             {c.archived && <span className="font-semibold text-amber">Archived</span>}
           </p>

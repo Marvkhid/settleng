@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { ChoiceGroup } from "@/components/ui/choice";
 import { Field, Input, MoneyInput } from "@/components/ui/field";
 import { refreshAll, useQuery } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { todayIso } from "@/lib/format";
 import { cleanAmount, transactionSchema, type TransactionForm } from "@/lib/schemas";
 
 export function TransactionNewForm() {
+  const once = useSingleFlight();
   const router = useRouter();
   const cats = useQuery(() => api.categories(), []);
   const { register, control, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<TransactionForm>({
@@ -26,7 +28,7 @@ export function TransactionNewForm() {
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't save this record. Please try again."); }
   });
   return (
-    <form onSubmit={submit} className="max-w-xl space-y-5" noValidate>
+    <form onSubmit={once(submit)} className="max-w-xl space-y-5" noValidate>
       <Controller control={control} name="type" render={({ field }) => (
         <ChoiceGroup legend="What kind of record is it?" name="t-type" value={field.value} onChange={field.onChange}
           options={[{ value: "INCOME", label: "Money in" }, { value: "EXPENSE", label: "Money out" }]} />

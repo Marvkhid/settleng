@@ -80,7 +80,7 @@ export function ReportsView() {
           <dl className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {rows.map(([k, v, note]) => (
               <div key={k} className="flex flex-wrap items-baseline justify-between gap-x-4 px-4 py-4 md:px-6">
-                <div><dt className="font-semibold">{k}</dt>{note && <dd className="text-sm text-slate">{note}</dd>}</div>
+                <dt className="font-semibold">{k}{note && <span className="block text-sm font-normal text-slate">{note}</span>}</dt>
                 <dd className="figure tnum text-2xl font-extrabold">{formatNaira(v)}</dd>
               </div>
             ))}

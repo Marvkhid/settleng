@@ -9,7 +9,7 @@ All phases live in this repository. Each phase is a commit series; nothing is sp
 | 3 Backend | Customers, invoices, payments, transactions, reports/dashboard, reconciliation, audit, Swagger | Done and verified on real Postgres (42 integration tests) |
 | 4 Frontend core | Landing, app shell, dashboard, customers, invoices, payments, transactions, settings | Done and verified in a real browser |
 | 5 Reconciliation and reports UI | CSV upload flow, review, reports, exports | Done and verified: upload, preview, import, confirm/reject matches, history, reports, CSV downloads |
-| 6 Polish and QA | Mobile/desktop pass, a11y, states, Playwright | Not started |
+| 6 Polish and QA | Mobile/desktop pass, a11y, states, error and failure handling | Done. Automated checks pass; manual screen-reader and real-device checks still to do (see below) |
 | 7 Deployment | Vercel + Node host + production Postgres, verified end to end | Not started |
 
 ## See it now, no credentials needed
@@ -31,10 +31,25 @@ npm run test:int    # full API against a throwaway real Postgres (no setup neede
 npm run lint && npm run build
 
 cd ../web
-npm test            # formatting + form validation tests
+npm test              # formatting + form validation tests
 npm run lint && npm run build
-npm run test:e2e    # drives the real UI in a browser (needs `npm run preview` running)
+npm run test:browser  # real-browser flows + keyboard/loading/double-click checks + accessibility audit
+                      # (needs `npm run preview` running; use CHROME_PATH to use your own Chrome)
+npm run test:api-down # API-unreachable behaviour (run with the web app up and the API stopped)
 ```
+
+## Phase 6 results
+
+Found and fixed by the automated checks:
+- White text on the emerald buttons failed contrast (3.5:1). Buttons now use a deeper emerald (5.4:1); the amber label colour was darkened too.
+- Several tap targets under 40px (logo, a few links, "add details" toggles, Close button) are now 44px.
+- The Reports list used invalid markup; the not-found screen had no page heading.
+- Field errors are now linked to their inputs (`aria-invalid`, `aria-describedby`) automatically.
+- A fast double-tap on Save sent two requests (so a sale or payment could be recorded twice). Every save/confirm action is now single-flight.
+
+Still to do by a person:
+- Try the app with a real screen reader (VoiceOver or TalkBack) and on a real phone. The automated audit cannot judge reading order or touch feel.
+- Check with Windows High Contrast / forced colours and 200% browser zoom.
 
 ## Product rules decided during the build
 

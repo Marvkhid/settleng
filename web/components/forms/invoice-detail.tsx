@@ -13,6 +13,7 @@ import { Field, Input, MoneyInput } from "@/components/ui/field";
 import { ErrorState, NotFoundState, Skeleton } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { refreshAll, useQuery } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { formatNaira, friendlyDate, METHOD_LABEL, todayIso } from "@/lib/format";
 import { cleanAmount, paymentSchema, type PaymentForm } from "@/lib/schemas";
@@ -20,6 +21,7 @@ import type { InvoiceView } from "@/types/api";
 import { InvoiceFormView } from "./invoice-form";
 
 function PaymentBody({ invoice, onDone }: { invoice: InvoiceView; onDone: () => void }) {
+  const once = useSingleFlight();
   const { register, control, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<PaymentForm>({
     resolver: zodResolver(paymentSchema), defaultValues: { amount: "", method: "CASH", paymentDate: todayIso(), reference: "" },
   });
@@ -30,7 +32,7 @@ function PaymentBody({ invoice, onDone }: { invoice: InvoiceView; onDone: () => 
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't save this payment. Please try again."); }
   });
   return (
-    <form onSubmit={submit} className="space-y-5" noValidate>
+    <form onSubmit={once(submit)} className="space-y-5" noValidate>
       <Field label="How much did they pay?" htmlFor="p-amount" error={errors.amount?.message}>
         <MoneyInput id="p-amount" autoFocus aria-invalid={!!errors.amount} {...register("amount")} />
         <button type="button" className="mt-1 text-sm font-semibold text-emerald-ink underline" onClick={() => setValue("amount", invoice.balance, { shouldValidate: true })}>Everything that&apos;s left: {formatNaira(invoice.balance)}</button>
@@ -47,6 +49,7 @@ function PaymentBody({ invoice, onDone }: { invoice: InvoiceView; onDone: () => 
 }
 
 export function InvoiceDetailView({ edit = false }: { edit?: boolean }) {
+  const once = useSingleFlight();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const q = useQuery(() => api.invoice(id), [id]);
@@ -66,10 +69,10 @@ export function InvoiceDetailView({ edit = false }: { edit?: boolean }) {
   }
 
   const canPay = !["DRAFT", "VOID", "PAID"].includes(inv.status);
-  const run = async (fn: () => Promise<unknown>, ok: string) => {
+  const run = once(async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
     try { await fn(); toast.success(ok); refreshAll(); setConfirm(null); } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't do that. Please try again."); setConfirm(null); } finally { setBusy(false); }
-  };
+  });
 
   return (
     <div>

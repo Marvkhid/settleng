@@ -11,10 +11,11 @@
   --line: #e4e0d8;
   --emerald: #0f9d6e;
   --emerald-ink: #0a7a55;
+  --emerald-deep: #086443;
   --emerald-wash: #e4f4ed;
   --red: #b83227;
   --red-wash: #fbe9e6;
-  --amber: #9a6410;
+  --amber: #85560c;
   --amber-wash: #fbf0dc;
   --radius: 0.75rem;
 }
@@ -29,6 +30,7 @@
   --color-line: var(--line);
   --color-emerald: var(--emerald);
   --color-emerald-ink: var(--emerald-ink);
+  --color-emerald-deep: var(--emerald-deep);
   --color-emerald-wash: var(--emerald-wash);
   --color-red: var(--red);
   --color-red-wash: var(--red-wash);

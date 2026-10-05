@@ -40,7 +40,7 @@ function QuickActions() {
   const tile = "flex min-h-24 flex-col items-start justify-between rounded-2xl p-4 text-left text-lg font-bold transition-colors";
   return (
     <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 md:grid-cols-5">
-      <button type="button" onClick={openSale} className={cn(tile, "col-span-2 bg-emerald text-white hover:bg-emerald-ink md:col-span-1")}>
+      <button type="button" onClick={openSale} className={cn(tile, "col-span-2 bg-emerald-ink text-white hover:bg-emerald-deep md:col-span-1")}>
         <Plus className="size-7" aria-hidden /> Record a sale
       </button>
       <button type="button" onClick={openExpense} className={cn(tile, "border border-line bg-surface hover:bg-sunken")}>
@@ -113,10 +113,10 @@ function Activity({ d }: { d: Dashboard }) {
     <section aria-labelledby="activity-h" className="rounded-2xl border border-line bg-surface p-4 md:p-6">
       <div className="mb-2 flex items-center justify-between">
         <h2 id="activity-h" className="text-xl font-bold">What happened recently</h2>
-        <Link href="/transactions" className="font-semibold text-emerald-ink underline">All records</Link>
+        <Link href="/transactions" className="inline-flex min-h-11 items-center font-semibold text-emerald-ink underline">All records</Link>
       </div>
       {d.recentActivity.length === 0
-        ? <EmptyState icon={<Wallet className="size-9" />} title="Nothing recorded yet" body="Record your first sale and it will show up here." action={<button type="button" onClick={openSale} className="min-h-12 rounded-xl bg-emerald px-5 font-semibold text-white">Record a sale</button>} />
+        ? <EmptyState icon={<Wallet className="size-9" />} title="Nothing recorded yet" body="Record your first sale and it will show up here." action={<button type="button" onClick={openSale} className="min-h-12 rounded-xl bg-emerald-ink px-5 font-semibold text-white hover:bg-emerald-deep">Record a sale</button>} />
         : <ul className="divide-y divide-line">{d.recentActivity.map((a) => <ActivityRow key={a.id} a={a} today={d.today} />)}</ul>}
     </section>
   );

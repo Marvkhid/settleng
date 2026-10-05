@@ -14,6 +14,7 @@ import { Pager } from "@/components/ui/pager";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/states";
 import { useDebounced } from "@/hooks/use-debounced";
 import { usePage } from "@/hooks/use-page";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { refreshAll, useQuery } from "@/hooks/use-query";
 import { api, ApiError } from "@/lib/api-client";
 import { formatNaira, friendlyDate, METHOD_LABEL, todayIso } from "@/lib/format";
@@ -25,6 +26,7 @@ const SOURCE_LABEL = { MANUAL: "Added by you", INVOICE_PAYMENT: "Invoice payment
 const TABS = [["", "All"], ["INCOME", "Money in"], ["EXPENSE", "Money out"]] as const;
 
 function EditBody({ t, onDone }: { t: TransactionView; onDone: () => void }) {
+  const once = useSingleFlight();
   const cats = useQuery(() => api.categories(), []);
   const list = (t.type === "INCOME" ? cats.data?.income : cats.data?.expense) ?? [];
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<TransactionForm>({
@@ -37,7 +39,7 @@ function EditBody({ t, onDone }: { t: TransactionView; onDone: () => void }) {
     } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't save the changes. Please try again."); }
   });
   return (
-    <form onSubmit={submit} className="space-y-4" noValidate>
+    <form onSubmit={once(submit)} className="space-y-4" noValidate>
       <Field label="Amount" htmlFor="e-amount" error={errors.amount?.message}><MoneyInput id="e-amount" {...register("amount")} /></Field>
       <Field label="Category" htmlFor="e-cat" error={errors.category?.message}>
         <Input id="e-cat" list="e-cats" {...register("category")} /><datalist id="e-cats">{list.map((c) => <option key={c} value={c} />)}</datalist>
@@ -50,6 +52,7 @@ function EditBody({ t, onDone }: { t: TransactionView; onDone: () => void }) {
 }
 
 export function TransactionsView() {
+  const once = useSingleFlight();
   const params = useSearchParams();
   const router = useRouter();
   const type = (params.get("type") ?? "") as "" | "INCOME" | "EXPENSE";
@@ -67,11 +70,11 @@ export function TransactionsView() {
   const catList = type === "INCOME" ? cats.data?.income : type === "EXPENSE" ? cats.data?.expense : [...new Set([...(cats.data?.income ?? []), ...(cats.data?.expense ?? [])])].sort();
   const filtered = !!(debounced || category || from || to);
 
-  const remove = async () => {
+  const remove = once(async () => {
     if (!deleting) return;
     setBusy(true);
     try { await api.deleteTransaction(deleting.id); toast.success("Record deleted"); refreshAll(); } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't delete this record."); } finally { setBusy(false); setDeleting(null); }
-  };
+  });
 
   return (
     <>

@@ -18,11 +18,12 @@ export function ErrorState({ error, onRetry, title = "We couldn't load this" }: 
   );
 }
 
-export function EmptyState({ icon, title, body, action }: { icon?: React.ReactNode; title: string; body: string; action?: React.ReactNode }) {
+export function EmptyState({ icon, title, body, action, asH1 }: { icon?: React.ReactNode; title: string; body: string; action?: React.ReactNode; asH1?: boolean }) {
+  const Heading = asH1 ? "h1" : "h3";
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line px-6 py-12 text-center">
       <div className="text-slate" aria-hidden>{icon ?? <SearchX className="size-9" />}</div>
-      <h3 className="text-xl font-bold">{title}</h3>
+      <Heading className="text-xl font-bold">{title}</Heading>
       <p className="max-w-sm text-slate">{body}</p>
       {action}
     </div>
@@ -30,5 +31,5 @@ export function EmptyState({ icon, title, body, action }: { icon?: React.ReactNo
 }
 
 export function NotFoundState({ what }: { what: string }) {
-  return <EmptyState title={`We couldn't find that ${what}`} body={`It may have been removed, or the link is wrong. Go back and pick it from the list.`} />;
+  return <EmptyState asH1 title={`We couldn't find that ${what}`} body={`It may have been removed, or the link is wrong. Go back and pick it from the list.`} />;
 }

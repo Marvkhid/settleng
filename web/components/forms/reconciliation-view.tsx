@@ -10,6 +10,7 @@ import { ConfirmDialog, Sheet } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/field";
 import { EmptyState, ErrorState, NotFoundState, Skeleton } from "@/components/ui/states";
 import { refreshAll, useQuery } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { formatNaira, friendlyDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const NOTICE = "These rows come from a file you uploaded. SettleNG has not check
 const MAP_FIELDS: [keyof ColumnMapping, string, boolean][] = [["date", "Date", true], ["amount", "Amount", true], ["description", "Description", false], ["direction", "In or out", false], ["reference", "Reference", false]];
 
 function UploadPanel({ onImported }: { onImported: (id: string) => void }) {
+  const once = useSingleFlight();
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<CsvPreview | null>(null);
@@ -48,19 +50,19 @@ function UploadPanel({ onImported }: { onImported: (id: string) => void }) {
     finally { setBusy(null); }
   };
   const pick = (f: File | undefined) => { if (!f) return; setFile(f); setPreview(null); setMapping({}); void runPreview(f); };
-  const save = async () => {
+  const save = once(async () => {
     if (!file) return;
     setBusy("save");
     try { const r = await api.saveCsv(file, mapping); toast.success(`Imported ${r.rowCount} rows`); refreshAll(); onImported(r.id); }
     catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't import this file. Please try again."); setBusy(null); }
-  };
+  });
   const reset = () => { setFile(null); setPreview(null); setError(null); if (input.current) input.current.value = ""; };
 
   return (
     <section aria-labelledby="up-h" className="rounded-2xl border border-line bg-surface p-4 md:p-6">
       <h2 id="up-h" className="text-xl font-bold">Upload a statement</h2>
-      <p className="mt-1 text-slate">A CSV file with a date, an amount and (ideally) a description for each row. {" "}
-        <a href={api.templateUrl()} download className="inline-flex items-center gap-1 font-semibold text-emerald-ink underline"><Download className="size-4" aria-hidden /> Download a sample file</a></p>
+      <p className="mt-1 text-slate">A CSV file with a date, an amount and (ideally) a description for each row.</p>
+      <a href={api.templateUrl()} download className="inline-flex min-h-11 items-center gap-1 font-semibold text-emerald-ink underline"><Download className="size-4" aria-hidden /> Download a sample file</a>
       <input ref={input} id="csv-file" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
       {!file ? (
         <label htmlFor="csv-file" className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-paper px-4 text-center font-semibold hover:bg-sunken has-[:focus-visible]:outline">
@@ -168,6 +170,7 @@ function ChooseInvoice({ row, onPick }: { row: ImportRow; onPick: (inv: InvoiceV
 }
 
 function ImportDetailView({ id }: { id: string }) {
+  const once = useSingleFlight();
   const router = useRouter();
   const q = useQuery(() => api.importDetail(id), [id]);
   const [confirm, setConfirm] = useState<{ row: ImportRow; invoiceId?: string; label: string } | null>(null);
@@ -179,17 +182,17 @@ function ImportDetailView({ id }: { id: string }) {
   if (!q.data) return <div className="space-y-2"><Skeleton className="h-10 w-64" />{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>;
   const d = q.data;
 
-  const doConfirm = async () => {
+  const doConfirm = once(async () => {
     if (!confirm) return;
     setBusy(true);
     try { await api.confirmRow(confirm.row.id, confirm.invoiceId); toast.success("Payment recorded and matched"); refreshAll(); }
     catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't match this row. Please try again."); }
     finally { setBusy(false); setConfirm(null); }
-  };
-  const reject = async (row: ImportRow) => {
+  });
+  const reject = once(async (row: ImportRow) => {
     try { await api.rejectRow(row.id); toast.success("Suggestion dismissed"); refreshAll(); }
     catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't do that. Please try again."); }
-  };
+  });
 
   return (
     <div>

@@ -9,6 +9,7 @@ import { ChoiceGroup } from "@/components/ui/choice";
 import { Sheet } from "@/components/ui/dialog";
 import { Field, Input, MoneyInput, Select } from "@/components/ui/field";
 import { useQuery, refreshAll } from "@/hooks/use-query";
+import { useSingleFlight } from "@/hooks/use-single-flight";
 import { api, ApiError } from "@/lib/api-client";
 import { formatNaira, todayIso } from "@/lib/format";
 import {
@@ -62,6 +63,7 @@ function submitError(e: unknown, fallback: string) {
 }
 
 function SaleFormBody({ onDone }: { onDone: () => void }) {
+  const once = useSingleFlight();
   const customers = useQuery(() => api.customers({ pageSize: 100 }), []);
   const { register, control, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<SaleForm>({
     resolver: zodResolver(saleSchema), defaultValues: { amount: "", paymentMethod: "CASH", customerId: "", description: "", date: todayIso() },
@@ -81,7 +83,7 @@ function SaleFormBody({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5" noValidate>
+    <form onSubmit={once(onSubmit)} className="space-y-5" noValidate>
       <Field label="How much did you sell?" htmlFor="sale-amount" error={errors.amount?.message}>
         <MoneyInput id="sale-amount" autoFocus aria-invalid={!!errors.amount} aria-describedby={errors.amount ? "sale-amount-error" : undefined} {...register("amount")} />
       </Field>
@@ -100,7 +102,7 @@ function SaleFormBody({ onDone }: { onDone: () => void }) {
           {customers.error && <p className="text-sm text-red">Couldn&apos;t load customers. <button type="button" className="underline" onClick={customers.refetch}>Try again</button></p>}
         </Field>
       )}
-      <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="flex items-center gap-1 text-sm font-semibold text-emerald-ink">
+      <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="flex min-h-11 items-center gap-1 text-sm font-semibold text-emerald-ink">
         <ChevronDown className={`size-4 transition-transform ${more ? "rotate-180" : ""}`} aria-hidden /> {more ? "Fewer details" : "Add details (what, date)"}
       </button>
       {more && (
@@ -117,6 +119,7 @@ function SaleFormBody({ onDone }: { onDone: () => void }) {
 const PRESET_CATEGORIES = ["Stock", "Transport", "Utilities", "Wages", "Rent", "Other"];
 
 function ExpenseFormBody({ onDone }: { onDone: () => void }) {
+  const once = useSingleFlight();
   const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm<ExpenseForm>({
     resolver: zodResolver(expenseSchema), defaultValues: { amount: "", category: "Stock", description: "", date: todayIso(), paymentMethod: "" },
   });
@@ -131,7 +134,7 @@ function ExpenseFormBody({ onDone }: { onDone: () => void }) {
     } catch (e) { submitError(e, "We couldn't save this expense. Please try again."); }
   });
   return (
-    <form onSubmit={onSubmit} className="space-y-5" noValidate>
+    <form onSubmit={once(onSubmit)} className="space-y-5" noValidate>
       <Field label="How much did you spend?" htmlFor="exp-amount" error={errors.amount?.message}>
         <MoneyInput id="exp-amount" autoFocus aria-invalid={!!errors.amount} {...register("amount")} />
       </Field>
@@ -141,7 +144,7 @@ function ExpenseFormBody({ onDone }: { onDone: () => void }) {
       )} />
       {errors.category && <p role="alert" className="text-sm font-medium text-red">{errors.category.message}</p>}
       <Field label="Note" htmlFor="exp-desc" optional error={errors.description?.message}><Input id="exp-desc" placeholder="Bought stock" {...register("description")} /></Field>
-      <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="flex items-center gap-1 text-sm font-semibold text-emerald-ink">
+      <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="flex min-h-11 items-center gap-1 text-sm font-semibold text-emerald-ink">
         <ChevronDown className={`size-4 transition-transform ${more ? "rotate-180" : ""}`} aria-hidden /> {more ? "Fewer details" : "Add details (date, how you paid)"}
       </button>
       {more && (
@@ -160,6 +163,7 @@ function ExpenseFormBody({ onDone }: { onDone: () => void }) {
 }
 
 export function CustomerPaidBody({ onDone, customerId }: { onDone: () => void; customerId?: string }) {
+  const once = useSingleFlight();
   const owing = useQuery(() => api.customers({ owingOnly: true, pageSize: 100 }), []);
   const { register, control, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<CustomerPaidForm>({
     resolver: zodResolver(customerPaidSchema), defaultValues: { customerId: customerId ?? "", amount: "", method: "CASH", reference: "" },
@@ -174,7 +178,7 @@ export function CustomerPaidBody({ onDone, customerId }: { onDone: () => void; c
   if (owing.error) return <div className="space-y-3"><p className="text-red">{owing.error.message}</p><Button variant="outline" onClick={owing.refetch}>Try again</Button></div>;
   if (!owing.loading && owing.data?.items.length === 0) return <p className="py-6 text-center text-slate">Nobody owes you right now. When you record a sale on credit, they will show up here.</p>;
   return (
-    <form onSubmit={onSubmit} className="space-y-5" noValidate>
+    <form onSubmit={once(onSubmit)} className="space-y-5" noValidate>
       {customerId ? <input type="hidden" {...register("customerId")} /> : (
         <Field label="Who paid?" htmlFor="paid-customer" error={errors.customerId?.message}>
           <Select id="paid-customer" aria-invalid={!!errors.customerId} {...register("customerId")}>
