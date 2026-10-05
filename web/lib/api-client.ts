@@ -1,6 +1,6 @@
 import type {
   Categories, CustomerDetail, CustomerSummary, Dashboard, InvoiceStatus, InvoiceView, Method, Page, SaleMethod, Series,
-  TransactionView, Workspace,
+  TransactionView, Workspace, CsvPreview, ColumnMapping, ImportDetail, ImportSummary,
 } from "@/types/api";
 import { getApiUrl } from "./env";
 
@@ -91,4 +91,19 @@ export const api = {
   updateTransaction: (id: string, b: { amount?: string; category?: string; description?: string; date?: string }) =>
     request<TransactionView>(`/transactions/${id}`, json("PATCH", b)),
   deleteTransaction: (id: string) => request<void>(`/transactions/${id}`, json("DELETE")),
+
+  previewCsv: (file: File, mapping?: ColumnMapping) => request<CsvPreview>("/reconciliation/preview", { method: "POST", body: csvForm(file, mapping) }),
+  saveCsv: (file: File, mapping?: ColumnMapping) => request<{ id: string; rowCount: number }>("/reconciliation/imports", { method: "POST", body: csvForm(file, mapping) }),
+  imports: () => request<{ items: ImportSummary[] }>("/reconciliation/imports"),
+  importDetail: (id: string) => request<ImportDetail>(`/reconciliation/imports/${id}`),
+  confirmRow: (rowId: string, invoiceId?: string) => request<{ status: string }>(`/reconciliation/rows/${rowId}/confirm`, json("POST", invoiceId ? { invoiceId } : {})),
+  rejectRow: (rowId: string) => request<{ status: string }>(`/reconciliation/rows/${rowId}/reject`, json("POST")),
+  templateUrl: () => `${getApiUrl()}/api/reconciliation/template`,
 };
+
+function csvForm(file: File, mapping?: ColumnMapping): FormData {
+  const f = new FormData();
+  f.append("file", file);
+  if (mapping) f.append("mapping", JSON.stringify(mapping));
+  return f;
+}

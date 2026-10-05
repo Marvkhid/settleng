@@ -4,6 +4,9 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const B = process.env.BASE_URL ?? 'http://localhost:3000';
 const browser = await puppeteer.launch({ args: [...chromium.args, '--no-sandbox'], executablePath: process.env.CHROME_PATH ?? (await chromium.executablePath()), headless: true });
@@ -155,6 +158,43 @@ await step('reports page loads numbers and offers CSV downloads', async () => {
 await step('unknown invoice shows a friendly not-found state', async () => {
   await page.goto(B + '/invoices/nope', { waitUntil: 'networkidle0' });
   await page.waitForFunction(() => document.body.innerText.includes("couldn't find that invoice"), { timeout: 8000 });
+});
+
+await step('CSV: preview saves nothing, suggestion is not auto-applied, user confirms, re-upload is caught as duplicate', async () => {
+  const API = process.env.API_URL ?? 'http://localhost:4000';
+  const j = (u, init) => fetch(API + u, init).then((r) => r.json());
+  const yesterday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' }).format(new Date(Date.now() - 86400000));
+  // An invoice issued before the bank row's date (a payment can't predate its invoice).
+  const inv = (await j('/api/invoices?status=UNPAID&pageSize=100')).items.find((i) => i.issueDate <= yesterday);
+  const csv = ['Date,Description,Amount,Direction,Reference',
+    `${yesterday},Transfer ${inv.invoiceNumber},${inv.balance},credit,E2E-REF-1`,
+    'not-a-date,Broken row,100,credit,E2E-REF-2',
+    `${yesterday},Same again,${inv.balance},credit,E2E-REF-1`,
+    `${yesterday},Airtime,500,debit,E2E-REF-4`].join('\n');
+  const file = path.join(os.tmpdir(), 'settleng-e2e-statement.csv'); fs.writeFileSync(file, csv);
+  const importsBefore = (await j('/api/reconciliation/imports')).items.length;
+
+  await page.goto(B + '/reconciliation', { waitUntil: 'networkidle0' });
+  await (await page.waitForSelector('#csv-file')).uploadFile(file);
+  await page.waitForFunction(() => document.body.innerText.includes('Possible match'), { timeout: 15000 });
+  const txt = await bodyText();
+  assert.match(txt, /Duplicate/); assert.match(txt, /Can't read/); assert.match(txt, /Nothing is saved yet/);
+  assert.equal((await j('/api/reconciliation/imports')).items.length, importsBefore, 'preview must not save');
+
+  await clickText('button', 'Import 4 rows'); await toast('Imported 4 rows');
+  await page.waitForFunction(() => location.search.includes('import='), { timeout: 10000 });
+  await page.waitForFunction(() => document.body.innerText.includes('This might be a payment for'), { timeout: 10000 });
+  assert.equal((await j(`/api/invoices/${inv.id}`)).balance, inv.balance, 'a suggestion must not change any money');
+
+  await clickText('button', 'Yes, match it'); await page.waitForSelector('[role=dialog]');
+  assert.match(await page.$eval('[role=dialog]', (e) => e.innerText), /You are saying this row really is that payment/);
+  await clickText('[role=dialog] button', 'Yes, record it'); await toast('Payment recorded and matched');
+  await page.waitForFunction(() => document.body.innerText.includes('Matched to'), { timeout: 10000 });
+  assert.equal((await j(`/api/invoices/${inv.id}`)).status, 'PAID');
+
+  await page.goto(B + '/reconciliation', { waitUntil: 'networkidle0' });
+  await (await page.waitForSelector('#csv-file')).uploadFile(file);
+  await page.waitForFunction(() => document.body.innerText.includes('Nothing new to import'), { timeout: 15000 });
 });
 
 await step('Reset Demo restores the original numbers', async () => {

@@ -6,7 +6,7 @@ Portfolio demo of a simple finance tracker for small Nigerian businesses: sales,
 
 ## Status
 
-Phases 1 to 4 are complete (foundation, database layer, backend, and the web app). Next: the CSV upload and review screen, polish, and deployment. Details and rules: [`docs/PHASES.md`](docs/PHASES.md).
+Phases 1 to 4 are complete (foundation, database layer, backend, and the web app). Phase 5 (CSV matching screen and reports) is also done. Next: a polish and accessibility pass, then deployment. Details and rules: [`docs/PHASES.md`](docs/PHASES.md).
 
 ## Structure
 

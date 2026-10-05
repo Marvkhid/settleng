@@ -46,3 +46,18 @@ export interface TransactionView {
   customer: { id: string; name: string } | null; invoice: { id: string; invoiceNumber: string } | null; editable: boolean;
 }
 export interface Categories { expense: string[]; income: string[] }
+
+export type RowStatus = "VALID" | "INVALID" | "DUPLICATE" | "UNMATCHED" | "SUGGESTED_MATCH" | "MATCHED";
+export interface ColumnMapping { date?: string; description?: string; amount?: string; direction?: string; reference?: string; credit?: string; debit?: string }
+export interface PreviewRow { rowNumber: number; date: string | null; description: string | null; amount: string | null; direction: "IN" | "OUT" | null; externalReference: string | null; status: RowStatus; note: string | null }
+export interface CsvPreview {
+  filename: string; headers: string[]; mapping: ColumnMapping | null; problems: string[]; rowCount: number;
+  counts: Record<RowStatus, number>; canSave: boolean; rows: PreviewRow[];
+}
+export interface ImportSummary { id: string; filename: string; status: "PENDING_REVIEW" | "COMPLETED"; rowCount: number; createdAt: string; counts: Partial<Record<RowStatus, number>> }
+export interface InvoiceRef { id: string; invoiceNumber: string; customer: string; balance: string }
+export interface ImportRow {
+  id: string; rowNumber: number; date: string | null; description: string | null; amount: string | null; direction: "IN" | "OUT" | null;
+  externalReference: string | null; status: RowStatus; note: string | null; suggestedInvoice: InvoiceRef | null; matchedInvoice: InvoiceRef | null;
+}
+export interface ImportDetail { id: string; filename: string; status: "PENDING_REVIEW" | "COMPLETED"; rowCount: number; createdAt: string; notice: string; rows: ImportRow[] }
