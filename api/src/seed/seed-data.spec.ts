@@ -138,6 +138,28 @@ describe('seed data', () => {
     }
   });
 
+  it('every suggested match can really be confirmed: dated on/after the invoice, not in the future, and within what is owed', () => {
+    for (const r of data.importedRows.filter(
+      (x) => x.matchStatus === 'SUGGESTED_MATCH',
+    )) {
+      const inv = data.invoices.find((i) => i.id === r.suggestedInvoiceId)!;
+      const v = invoiceView(inv.id);
+      expect(r.date! >= inv.issueDate).toBe(true);
+      expect(r.date! <= TODAY).toBe(true);
+      expect(new Decimal(r.amount!).lte(invoiceBalance(v))).toBe(true);
+      expect(invoiceStatus(v, TODAY)).not.toBe('PAID');
+    }
+    for (const r of data.importedRows.filter(
+      (x) => x.matchStatus === 'MATCHED',
+    )) {
+      const pay = data.payments.find(
+        (p) => p.invoiceId === r.matchedInvoiceId,
+      )!;
+      expect(r.date).toBe(pay.paymentDate);
+      expect(r.amount).toBe(pay.amount);
+    }
+  });
+
   it('shifts all dates with `today` and keeps the same story', () => {
     const later = buildSeedData(addDays(TODAY, 30));
     expect(later.invoices.map((i) => i.invoiceNumber)).toEqual(

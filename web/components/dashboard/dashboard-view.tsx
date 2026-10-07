@@ -4,9 +4,10 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, HandCoins, ListChecks, Plus,
 import { useActions } from "@/components/forms/actions";
 import { DemoBadge } from "@/components/shell/app-shell";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/states";
+import { useGreeting } from "@/hooks/use-greeting";
 import { useQuery } from "@/hooks/use-query";
 import { api } from "@/lib/api-client";
-import { formatNaira, friendlyDate, greeting } from "@/lib/format";
+import { formatNaira, friendlyDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ActivityItem, Dashboard } from "@/types/api";
 import { SalesChart } from "./sales-chart";
@@ -134,10 +135,11 @@ function DashboardSkeleton() {
 
 export function DashboardView() {
   const q = useQuery(() => api.dashboard(), []);
+  const hello = useGreeting();
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-extrabold md:text-4xl">{greeting()}</h1>
+        <h1 className="text-3xl font-extrabold md:text-4xl">{hello}</h1>
         <p className="mt-1 text-lg text-slate">Here&apos;s how your business is doing.</p>
         <DemoBadge className="mt-3 sm:hidden" />
       </div>

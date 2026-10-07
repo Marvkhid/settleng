@@ -386,7 +386,7 @@ export function buildSeedData(today: string): SeedData {
         importedRows.push({
           ...base,
           externalReference: ref,
-          date,
+          date: pay.paymentDate,
           description: `Transfer from customer ${inv.i + 1}`,
           amount: pay.amount,
           direction: 'IN',
@@ -399,10 +399,18 @@ export function buildSeedData(today: string): SeedData {
         const paid = payments
           .filter((p) => p.invoiceId === invId)
           .reduce((s, p) => s + p.amount, 0);
+        // A bank row can't predate the invoice it pays, so "Yes, match it" always works in the demo.
+        const issued = invoices[inv.i].issueDate;
+        const rowDate =
+          date < issued
+            ? addDays(issued, 1) > today
+              ? today
+              : addDays(issued, 1)
+            : date;
         importedRows.push({
           ...base,
           externalReference: ref,
-          date,
+          date: rowDate,
           description: `Payment ${invoices[inv.i].invoiceNumber}`,
           amount: (invoiceTotals.get(invId) ?? 0) - paid,
           direction: 'IN',

@@ -92,8 +92,8 @@ export function TransactionsView() {
           <Input type="search" aria-label="Search records" placeholder="Search" className="pl-12" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All categories</option>{catList?.map((c) => <option key={c} value={c}>{c}</option>)}</Select>
-        <Input type="date" aria-label="From date" value={from} max={to || todayIso()} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" aria-label="To date" value={to} min={from} max={todayIso()} onChange={(e) => setTo(e.target.value)} />
+        <label className="text-sm font-semibold">From<Input type="date" className="mt-1" value={from} max={to || todayIso()} onChange={(e) => setFrom(e.target.value)} /></label>
+        <label className="text-sm font-semibold">To<Input type="date" className="mt-1" value={to} min={from} max={todayIso()} onChange={(e) => setTo(e.target.value)} /></label>
       </div>
 
       {q.error && !q.data ? <ErrorState error={q.error} onRetry={q.refetch} /> : !q.data ? (
@@ -115,7 +115,7 @@ export function TransactionsView() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{t.description ?? t.category}</span>
-                    <span className="block truncate text-sm text-slate">
+                    <span className="block text-sm text-slate">
                       {friendlyDate(t.date)} · {t.category}{t.customer ? ` · ${t.customer.name}` : ""}{t.paymentMethod ? ` · ${METHOD_LABEL[t.paymentMethod] ?? t.paymentMethod}` : ""}
                     </span>
                     <span className="mt-0.5 inline-block rounded-full bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-soft">

@@ -12,7 +12,8 @@
     "test:qa": "node e2e/qa.mjs",
     "test:a11y": "node e2e/a11y-audit.mjs",
     "test:api-down": "node e2e/api-down.mjs",
-    "test:browser": "node e2e/flows.mjs && node e2e/qa.mjs && node e2e/a11y-audit.mjs"
+    "test:browser": "node e2e/flows.mjs && node e2e/qa.mjs && node e2e/a11y-audit.mjs",
+    "test:sweep": "node e2e/sweep-desktop.mjs && node e2e/sweep-phone-csv.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

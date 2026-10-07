@@ -35,6 +35,7 @@ npm test              # formatting + form validation tests
 npm run lint && npm run build
 npm run test:browser  # real-browser flows + keyboard/loading/double-click checks + accessibility audit
                       # (needs `npm run preview` running; use CHROME_PATH to use your own Chrome)
+npm run test:sweep    # clicks through every screen and control on desktop and phone (resets the demo when done)
 npm run test:api-down # API-unreachable behaviour (run with the web app up and the API stopped)
 ```
 
@@ -46,6 +47,10 @@ Found and fixed by the automated checks:
 - The Reports list used invalid markup; the not-found screen had no page heading.
 - Field errors are now linked to their inputs (`aria-invalid`, `aria-describedby`) automatically.
 - A fast double-tap on Save sent two requests (so a sale or payment could be recorded twice). Every save/confirm action is now single-flight.
+
+Found by the final click-through of a fresh unzip (`npm run install:all` then `npm run preview`):
+- 3 of the 6 sample "Possible match" rows showed an error when you clicked "Yes, match it" (their dates fell before the invoice's issue date). Sample data fixed, with a test.
+- Deleting a draft invoice briefly re-read the invoice it had just deleted (a 404 flash). Fixed.
 
 Still to do by a person:
 - Try the app with a real screen reader (VoiceOver or TalkBack) and on a real phone. The automated audit cannot judge reading order or touch feel.

@@ -102,10 +102,10 @@ function UploadPanel({ onImported }: { onImported: (id: string) => void }) {
               <ul className="max-h-96 divide-y divide-line overflow-y-auto rounded-2xl border border-line">
                 {preview.rows.map((r) => (
                   <li key={r.rowNumber} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                    <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{r.description ?? "No description"}</span>
+                    <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><span className="block truncate font-semibold">{r.description ?? "No description"}</span>
                       <span className="block text-sm text-slate">{r.date ? friendlyDate(r.date) : "No date"}{r.note ? ` · ${r.note}` : ""}</span></span>
                     <RowBadge status={r.status} />
-                    <span className="figure tnum w-28 text-right font-bold">{r.amount ? formatNaira(r.amount, { signed: r.direction === "OUT" ? "-" : "+" }) : "-"}</span>
+                    <span className="figure tnum ml-auto text-right font-bold sm:w-28">{r.amount ? formatNaira(r.amount, { signed: r.direction === "OUT" ? "-" : "+" }) : "-"}</span>
                   </li>
                 ))}
               </ul>
@@ -203,10 +203,10 @@ function ImportDetailView({ id }: { id: string }) {
         {d.rows.map((r) => (
           <li key={r.id} className="px-4 py-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{r.description ?? "No description"}</span>
+              <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><span className="block truncate font-semibold">{r.description ?? "No description"}</span>
                 <span className="block text-sm text-slate">{r.date ? friendlyDate(r.date) : "No date"}{r.externalReference ? ` · Ref ${r.externalReference}` : ""}</span></span>
               <RowBadge status={r.status} />
-              <span className={cn("figure tnum w-28 text-right text-lg font-bold", r.direction === "IN" && "text-emerald-ink")}>{r.amount ? formatNaira(r.amount, { signed: r.direction === "OUT" ? "-" : "+" }) : "-"}</span>
+              <span className={cn("figure tnum ml-auto text-right text-lg font-bold sm:w-28", r.direction === "IN" && "text-emerald-ink")}>{r.amount ? formatNaira(r.amount, { signed: r.direction === "OUT" ? "-" : "+" }) : "-"}</span>
             </div>
             {r.note && <p className="mt-1 text-sm text-slate">{r.note}</p>}
             {r.status === "SUGGESTED_MATCH" && r.suggestedInvoice && (

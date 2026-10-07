@@ -10,6 +10,22 @@ const j = (u) => fetch(API + u).then((r) => r.json());
 const newPage = async (w = 1280, h = 900) => { const p = await browser.newPage(); await p.setViewport({ width: w, height: h }); return p; };
 const bodyText = (p) => p.evaluate(() => document.body.innerText);
 
+await step('no hydration mismatch or wrong greeting when the visitor clock differs from the build time', async () => {
+  for (const [hour, expected] of [[8, 'Good morning'], [14, 'Good afternoon'], [20, 'Good evening']]) {
+    const p = await newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+    // Pretend it is `hour` o'clock in Lagos (UTC+1) in the browser
+    await p.evaluateOnNewDocument((utcHour) => {
+      const Real = Date; const fixed = Real.UTC(2026, 9, 5, utcHour, 0, 0);
+      class Fake extends Real { constructor(...a) { if (a.length === 0) super(fixed); else super(...a); } static now() { return fixed; } }
+      globalThis.Date = Fake;
+    }, hour - 1);
+    await p.goto(B + '/dashboard', { waitUntil: 'networkidle0' }); await p.waitForSelector('#sales-today');
+    assert.equal(await p.$eval('h1', (e) => e.textContent.trim()), expected);
+    assert.deepEqual(errs, [], 'page errors: ' + errs.join(' | '));
+    await p.close();
+  }
+});
+
 await step('keyboard: open a sheet with Enter, focus stays trapped inside, Escape closes and returns focus', async () => {
   const p = await newPage(); await p.goto(B + '/dashboard', { waitUntil: 'networkidle0' }); await p.waitForSelector('#sales-today');
   await p.evaluate(() => [...document.querySelectorAll('section[aria-label="Quick actions"] button')][0].focus());

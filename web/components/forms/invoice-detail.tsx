@@ -69,9 +69,10 @@ export function InvoiceDetailView({ edit = false }: { edit?: boolean }) {
   }
 
   const canPay = !["DRAFT", "VOID", "PAID"].includes(inv.status);
-  const run = once(async (fn: () => Promise<unknown>, ok: string) => {
+  // `leaves` is for actions after which this invoice no longer exists (delete): we navigate away instead of re-reading it.
+  const run = once(async (fn: () => Promise<unknown>, ok: string, leaves = false) => {
     setBusy(true);
-    try { await fn(); toast.success(ok); refreshAll(); setConfirm(null); } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't do that. Please try again."); setConfirm(null); } finally { setBusy(false); }
+    try { await fn(); toast.success(ok); if (!leaves) refreshAll(); setConfirm(null); } catch (e) { toast.error(e instanceof ApiError ? e.message : "We couldn't do that. Please try again."); setConfirm(null); } finally { setBusy(false); }
   });
 
   return (
@@ -133,7 +134,7 @@ export function InvoiceDetailView({ edit = false }: { edit?: boolean }) {
         description="It will stop counting as money owed. You can't record payments on it afterwards." confirmLabel="Void invoice" onConfirm={() => void run(() => api.voidInvoice(inv.id), "Invoice voided")} />
       <ConfirmDialog open={confirm === "delete"} onOpenChange={(o) => !o && setConfirm(null)} loading={busy} destructive title="Delete this draft?"
         description="The draft will be removed for good. Issued invoices can't be deleted, only voided." confirmLabel="Delete draft"
-        onConfirm={() => void run(async () => { await api.deleteInvoice(inv.id); router.replace("/invoices"); }, "Draft deleted")} />
+        onConfirm={() => void run(async () => { await api.deleteInvoice(inv.id); router.replace("/invoices"); }, "Draft deleted", true)} />
     </div>
   );
 }
