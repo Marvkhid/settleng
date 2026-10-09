@@ -3,7 +3,7 @@
   "private": true,
   "description": "SettleNG: portfolio fintech demo for small Nigerian businesses",
   "scripts": {
-    "install:all": "npm install --prefix api && npm install --prefix web",
+    "install:all": "node scripts/install-all.mjs",
     "dev:api": "npm run start:dev --prefix api",
     "dev:web": "npm run dev --prefix web",
     "build": "npm run build --prefix api && npm run build --prefix web",
@@ -11,7 +11,15 @@
     "test": "npm test --prefix api",
     "test:e2e": "npm run test:e2e --prefix api",
     "test:int": "npm run test:int --prefix api",
+    "test:prod-boot": "npm run test:prod-boot --prefix api",
     "db:seed": "npm run db:seed --prefix api",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "dev": "node scripts/dev.mjs",
+    "db:deploy": "npm run db:deploy --prefix api",
+    "verify:deploy": "node scripts/verify-deploy.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

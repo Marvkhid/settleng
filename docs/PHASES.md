@@ -10,7 +10,7 @@ All phases live in this repository. Each phase is a commit series; nothing is sp
 | 4 Frontend core | Landing, app shell, dashboard, customers, invoices, payments, transactions, settings | Done and verified in a real browser |
 | 5 Reconciliation and reports UI | CSV upload flow, review, reports, exports | Done and verified: upload, preview, import, confirm/reject matches, history, reports, CSV downloads |
 | 6 Polish and QA | Mobile/desktop pass, a11y, states, error and failure handling | Done. Automated checks pass; manual screen-reader and real-device checks still to do (see below) |
-| 7 Deployment | Vercel + Node host + production Postgres, verified end to end | Not started |
+| 7 Deployment | Vercel + Node host + production Postgres, verified end to end | Prepared and tested locally (migration, production boot, Docker/Render files, verifier). The live deploy needs your accounts: docs/DEPLOYMENT.md |
 
 ## See it now, no credentials needed
 

@@ -14,6 +14,7 @@ const fakePrisma = {
         currency: 'NGN',
       }),
   },
+  $queryRaw: () => Promise.resolve([{ ok: 1 }]),
   $connect: () => Promise.resolve(),
   $disconnect: () => Promise.resolve(),
 };

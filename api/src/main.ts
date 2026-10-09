@@ -8,7 +8,7 @@ import { loadEnv } from './config/env';
 async function bootstrap() {
   const env = loadEnv();
   const app = await NestFactory.create(AppModule);
-  configureApp(app, env.corsOrigins);
+  configureApp(app, env.corsOrigins, { trustProxy: env.isProduction });
 
   const doc = SwaggerModule.createDocument(
     app,
@@ -22,6 +22,7 @@ async function bootstrap() {
   );
   SwaggerModule.setup('api/docs', app, doc);
 
-  await app.listen(env.port);
+  await app.listen(env.port, '0.0.0.0');
+  console.log(`SettleNG API listening on port ${env.port} (${env.nodeEnv})`);
 }
 void bootstrap();

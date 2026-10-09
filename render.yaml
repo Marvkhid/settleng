@@ -1,0 +1,23 @@
+# Render Blueprint for the SettleNG API. Render: New > Blueprint > pick this repo.
+# The web app is deployed separately on Vercel (Root Directory: web). See docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: settleng-api
+    runtime: node
+    rootDir: api
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:deploy
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "true"
+      - key: DATABASE_URL     # Supabase pooled connection string (port 6543)
+        sync: false
+      - key: DIRECT_URL       # Supabase direct / session connection string (port 5432), used for migrations
+        sync: false
+      - key: CORS_ORIGIN      # your website URL, for example https://settleng.vercel.app
+        sync: false

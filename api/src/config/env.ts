@@ -3,20 +3,50 @@ export interface AppEnv {
   nodeEnv: string;
   corsOrigins: string[];
   demoMode: boolean;
+  isProduction: boolean;
 }
 
+/**
+ * Reads and checks configuration. In production it refuses to start with unsafe or missing settings,
+ * so a misconfigured deploy fails loudly instead of running half-working.
+ */
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   const port = Number(source.PORT ?? 4000);
   if (!Number.isInteger(port) || port <= 0) {
     throw new Error('PORT must be a positive integer');
   }
+  const nodeEnv = source.NODE_ENV ?? 'development';
+  const isProduction = nodeEnv === 'production';
+  const corsOrigins = (source.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (isProduction) {
+    const problems: string[] = [];
+    if (!source.DATABASE_URL)
+      problems.push(
+        'DATABASE_URL is not set (your Supabase pooled connection string).',
+      );
+    if (!source.CORS_ORIGIN)
+      problems.push(
+        'CORS_ORIGIN is not set (the exact URL of your website, for example https://settleng.vercel.app).',
+      );
+    if (corsOrigins.some((o) => o === '*' || !/^https?:\/\//.test(o)))
+      problems.push(
+        'CORS_ORIGIN must be full URLs like https://settleng.vercel.app, not "*".',
+      );
+    if (problems.length)
+      throw new Error(
+        `Cannot start in production:\n - ${problems.join('\n - ')}`,
+      );
+  }
+
   return {
     port,
-    nodeEnv: source.NODE_ENV ?? 'development',
-    corsOrigins: (source.CORS_ORIGIN ?? 'http://localhost:3000')
-      .split(',')
-      .map((o) => o.trim())
-      .filter(Boolean),
+    nodeEnv,
+    corsOrigins,
     demoMode: (source.DEMO_MODE ?? 'true') === 'true',
+    isProduction,
   };
 }

@@ -1,0 +1,9 @@
+node_modules
+dist
+.local-pg
+.env
+.env.*
+!.env.example
+coverage
+test
+src/generated
