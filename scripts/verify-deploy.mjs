@@ -38,15 +38,9 @@ if (apiAwake) {
     if (r.status !== 200) throw new Error(`${b.message ?? `HTTP ${r.status}`}\nCheck DATABASE_URL (use the pooled port-6543 string) and that migrations ran (npm run db:deploy).`);
     return `database ${b.database}`;
   });
-  await check('Sample business is loaded', async () => {
-    const b = await (await get(`${API}/api/health/ready`)).json();
-    if (b.sampleData !== 'loaded') throw new Error('The database is empty. Open the website > Settings > Reset Demo, or run: npm run db:seed');
-  });
-  await check('Dashboard data comes back in the right shape', async () => {
-    const r = await get(`${API}/api/dashboard`); const d = await r.json();
-    if (r.status !== 200) throw new Error(`HTTP ${r.status}: ${d.message ?? ''}`);
-    for (const k of ['salesToday', 'expensesToday', 'moneyIn', 'moneyOut', 'customersOwing', 'recentActivity', 'chart']) if (!(k in d)) throw new Error(`missing "${k}" in the response`);
-    return `sales today ${d.salesToday}`;
+  await check('Protected API routes require a signed-in token (401 without)', async () => {
+    const r = await get(`${API}/api/dashboard`);
+    if (r.status !== 401) throw new Error(`/api/dashboard returned HTTP ${r.status}, expected 401 for an anonymous request. The AuthGuard may not be applied globally.`);
   });
   await check('API allows YOUR website (CORS), and blocks other sites', async () => {
     const ok = (await get(`${API}/api/health`, { headers: { Origin: WEB } })).headers.get('access-control-allow-origin');
@@ -71,13 +65,16 @@ await check('Website loads', async () => {
   if (r.status !== 200) throw new Error(`HTTP ${r.status}. Check the Vercel deployment and its Root Directory (must be "web").`);
   if (!html.includes('SettleNG')) throw new Error('The page does not look like SettleNG.');
 });
-await check('Direct links work (dashboard, a customer page, a 404 page)', async () => {
-  for (const [p, want] of [['/dashboard', 200], ['/customers/demo-cust-01', 200], ['/invoices/new', 200], ['/definitely-not-a-page', 404]]) {
-    const r = await get(`${WEB}${p}`); if (r.status !== want) throw new Error(`${p} returned HTTP ${r.status}, expected ${want}`);
-  }
+await check('Public pages load; app routes redirect signed-out visitors to /login', async () => {
+  const home = await get(`${WEB}/`); if (home.status !== 200) throw new Error(`/ returned HTTP ${home.status}`);
+  const login = await get(`${WEB}/login`); if (login.status !== 200) throw new Error(`/login returned HTTP ${login.status}`);
+  // The dashboard is behind auth: with redirect:'follow' we land on /login (200).
+  const dash = await get(`${WEB}/dashboard`);
+  if (dash.status !== 200 || !dash.url.includes('/login')) throw new Error(`/dashboard did not redirect a signed-out visitor to /login (status ${dash.status}, url ${dash.url}).`);
+  const missing = await get(`${WEB}/definitely-not-a-page`); if (missing.status !== 404) throw new Error(`a bad link returned HTTP ${missing.status}, expected 404`);
 });
 await check('Website was built pointing at THIS API (NEXT_PUBLIC_API_URL)', async () => {
-  const page = await (await get(`${WEB}/dashboard`)).text();
+  const page = await (await get(`${WEB}/`)).text();
   const scripts = [...new Set([...page.matchAll(/\/_next\/static\/[^"'\s\\]+\.js/g)].map((m) => m[0]))].slice(0, 40);
   let hasApi = false, hasLocalhost = false;
   for (const s of scripts) {

@@ -15,7 +15,8 @@ const migrationSql = () => fs.readdirSync(migrationsDir, { withFileTypes: true }
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'settleng-pg-'));
 const port = 54000 + Math.floor(Math.random() * 900);
-const server = new EmbeddedPostgres({ databaseDir: dir, user: 'postgres', password: 'test', port, persistent: false, createPostgresUser: true,
+const server = new EmbeddedPostgres({ databaseDir: dir, user: 'postgres', password: 'test', port, persistent: false, createPostgresUser: process.platform !== 'win32',
+  initdbFlags: ['--encoding=UTF8', '--lc-collate=C', '--lc-ctype=C'],
   onLog: () => {}, onError: () => {} });
 await server.initialise();
 await server.start();

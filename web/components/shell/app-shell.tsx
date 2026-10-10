@@ -3,11 +3,13 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import {
-  ArrowDownLeft, ArrowUpRight, FileText, GitCompareArrows, Home, LineChart, Menu, Plus, Settings, Users,
+  ArrowDownLeft, ArrowUpRight, FileText, GitCompareArrows, Home, LineChart, LogOut, Menu, Plus, Settings, Users,
 } from "lucide-react";
 import { ActionsProvider, useActions } from "@/components/forms/actions";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface Item { href: string; label: string; Icon: typeof Home; match: (p: string, type: string | null) => boolean }
@@ -24,14 +26,6 @@ const SECONDARY: Item[] = [
   { href: "/settings", label: "Settings", Icon: Settings, match: (p) => p.startsWith("/settings") },
 ];
 
-export function DemoBadge({ className }: { className?: string }) {
-  return (
-    <span className={cn("inline-flex items-center gap-2 rounded-full bg-amber-wash px-3 py-1 text-sm font-semibold text-amber", className)}>
-      <span aria-hidden className="size-2 rounded-full bg-amber" /> Demo mode · Sample business
-    </span>
-  );
-}
-
 function Wordmark() {
   return (
     <Link href="/dashboard" className="inline-flex min-h-11 items-center font-display text-2xl font-extrabold tracking-tight text-ink">
@@ -43,7 +37,7 @@ function Wordmark() {
 function SideLink({ item, active }: { item: Item; active: boolean }) {
   return (
     <Link href={item.href} aria-current={active ? "page" : undefined}
-      className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-semibold transition-colors", active ? "bg-ink text-white" : "text-ink-soft hover:bg-sunken")}>
+      className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-semibold transition-colors", active ? "bg-panel text-white" : "text-ink-soft hover:bg-sunken")}>
       <item.Icon className="size-5" aria-hidden /> {item.label}
     </Link>
   );
@@ -52,12 +46,23 @@ function SideLink({ item, active }: { item: Item; active: boolean }) {
 function Sidebar() {
   const path = usePathname();
   const type = useSearchParams().get("type");
+  const { businessName } = useAuth();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-6 border-r border-line bg-paper p-5 md:flex">
       <Wordmark />
+      {businessName && <p className="-mt-3 truncate text-sm text-slate">{businessName}</p>}
       <nav aria-label="Main" className="flex flex-col gap-1">{PRIMARY.map((i) => <SideLink key={i.href} item={i} active={i.match(path, type)} />)}</nav>
       <nav aria-label="More" className="mt-auto flex flex-col gap-1 border-t border-line pt-4">{SECONDARY.map((i) => <SideLink key={i.href} item={i} active={i.match(path, type)} />)}</nav>
     </aside>
+  );
+}
+
+function AccountButton({ className }: { className?: string }) {
+  const { signOut, firstName } = useAuth();
+  return (
+    <Button variant="outline" size="sm" className={className} onClick={() => void signOut()}>
+      <LogOut className="size-4" aria-hidden /> Sign out{firstName ? ` (${firstName})` : ""}
+    </Button>
   );
 }
 
@@ -66,8 +71,12 @@ function TopBar() {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-paper/95 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:px-8">
       <div className="md:hidden"><Wordmark /></div>
-      <DemoBadge className="hidden sm:inline-flex" />
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <AccountButton className="md:hidden" />
+      </div>
       <div className="hidden items-center gap-2 md:flex">
+        <AccountButton />
         <Button variant="outline" size="sm" onClick={openExpense}>Record an expense</Button>
         <Button size="sm" onClick={openSale}>Record a sale</Button>
       </div>
@@ -79,6 +88,7 @@ function BottomBar() {
   const path = usePathname();
   const type = useSearchParams().get("type");
   const { openMenu } = useActions();
+  const { businessName, firstName, signOut } = useAuth();
   const [more, setMore] = useState(false);
   const tab = (item: Item, label = item.label) => {
     const active = item.match(path, type);
@@ -105,15 +115,21 @@ function BottomBar() {
           <Menu className="size-6" aria-hidden /> More
         </button>
       </nav>
-      <Sheet open={more} onOpenChange={setMore} title="More">
+      <Sheet open={more} onOpenChange={setMore} title={businessName ?? "Menu"} description={firstName ? `Signed in as ${firstName}` : undefined}>
+        <div className="mb-2 flex items-center justify-between rounded-xl bg-sunken px-3 py-2">
+          <span className="text-sm font-semibold text-ink-soft">Appearance</span>
+          <ThemeToggle className="size-9 border-0 bg-surface" />
+        </div>
         <div className="grid gap-1">
           {[PRIMARY[1], PRIMARY[2], PRIMARY[5], ...SECONDARY].map((i) => (
             <Link key={i.href} href={i.href} onClick={() => setMore(false)} className="flex min-h-14 items-center gap-3 rounded-xl px-3 text-lg font-semibold hover:bg-sunken">
               <i.Icon className="size-6 text-slate" aria-hidden /> {i.label}
             </Link>
           ))}
+          <button type="button" onClick={() => { setMore(false); void signOut(); }} className="flex min-h-14 items-center gap-3 rounded-xl px-3 text-lg font-semibold text-red hover:bg-red-wash">
+            <LogOut className="size-6" aria-hidden /> Sign out
+          </button>
         </div>
-        <DemoBadge className="mt-4" />
       </Sheet>
     </>
   );
@@ -122,7 +138,7 @@ function BottomBar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ActionsProvider>
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-panel focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
       <div className="flex min-h-dvh">
         <Suspense fallback={<div className="hidden w-64 shrink-0 md:block" />}><Sidebar /></Suspense>
         <div className="flex min-w-0 flex-1 flex-col">

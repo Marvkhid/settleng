@@ -6,14 +6,8 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 const fakePrisma = {
-  business: {
-    findUnique: () =>
-      Promise.resolve({
-        id: 'demo-business',
-        name: 'Adeola Mini Mart',
-        currency: 'NGN',
-      }),
-  },
+  business: { findUnique: () => Promise.resolve(null) },
+  profile: { findUnique: () => Promise.resolve(null) },
   $queryRaw: () => Promise.resolve([{ ok: 1 }]),
   $connect: () => Promise.resolve(),
   $disconnect: () => Promise.resolve(),
@@ -23,7 +17,7 @@ describe('API (e2e, database stubbed)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    process.env.DEMO_MODE = 'true';
+    process.env.SUPABASE_JWT_SECRET = 'settleng-integration-test-secret';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
       .useValue(fakePrisma)
@@ -44,7 +38,7 @@ describe('API (e2e, database stubbed)', () => {
     await app.close();
   });
 
-  it('GET /api/health returns ok', async () => {
+  it('GET /api/health returns ok (public)', async () => {
     const res: { body: { status: string } } = await request(
       app.getHttpServer() as App,
     )
@@ -53,12 +47,18 @@ describe('API (e2e, database stubbed)', () => {
     expect(res.body.status).toBe('ok');
   });
 
-  it('GET /api/demo/workspace returns the demo notice and business', async () => {
-    const res: { body: { notice: string; business: { name: string } } } =
-      await request(app.getHttpServer() as App)
-        .get('/api/demo/workspace')
-        .expect(200);
-    expect(res.body.notice).toContain('Sample business');
-    expect(res.body.business.name).toBe('Adeola Mini Mart');
+  it('GET /api/health/ready returns ok (public)', async () => {
+    const res: { body: { status: string } } = await request(
+      app.getHttpServer() as App,
+    )
+      .get('/api/health/ready')
+      .expect(200);
+    expect(res.body.status).toBe('ok');
+  });
+
+  it('protected route rejects a request with no token', async () => {
+    await request(app.getHttpServer() as App)
+      .get('/api/dashboard')
+      .expect(401);
   });
 });

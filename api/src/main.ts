@@ -15,7 +15,7 @@ async function bootstrap() {
     new DocumentBuilder()
       .setTitle('SettleNG API')
       .setDescription(
-        'Demo API for SettleNG. All data is fictional. Money values are strings with two decimals.',
+        'SettleNG API. Money values are strings with two decimals. Every route except /api/health requires a Supabase access token.',
       )
       .setVersion('0.3.0')
       .build(),

@@ -1,6 +1,6 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { DEMO_BUSINESS_ID } from '../seed/seed-data';
+import { Public } from '../auth/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('health')
@@ -9,6 +9,7 @@ export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Liveness: the process is running. Use this for the host's health check. */
+  @Public()
   @Get()
   @ApiOkResponse({ description: 'API is running' })
   check() {
@@ -19,21 +20,14 @@ export class HealthController {
     };
   }
 
-  /** Readiness: the database answers, and tells you whether the sample business has been loaded. */
+  /** Readiness: the database answers. */
+  @Public()
   @Get('ready')
   @ApiOkResponse({ description: 'API can reach its database' })
   async ready() {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-      const business = await this.prisma.business.findUnique({
-        where: { id: DEMO_BUSINESS_ID },
-        select: { id: true },
-      });
-      return {
-        status: 'ok',
-        database: 'up',
-        sampleData: business ? 'loaded' : 'missing',
-      };
+      return { status: 'ok', database: 'up' };
     } catch {
       throw new ServiceUnavailableException(
         'The database is not reachable. Check DATABASE_URL and that migrations have run.',

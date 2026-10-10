@@ -9,7 +9,9 @@ module.exports = async () => {
     child.on('exit', (c) => reject(new Error(`Postgres helper exited early (${c})`)));
   });
   process.env.DATABASE_URL = url;
-  process.env.DEMO_MODE = 'true';
+  // The API verifies Supabase JWTs. For the throwaway test database we trust a shared HS256 secret
+  // (see support/tokens.ts) so the suite can mint tokens for distinct users without a live Supabase.
+  process.env.SUPABASE_JWT_SECRET = 'settleng-integration-test-secret';
   process.env.THROTTLE_DISABLED = 'true';
   globalThis.__PG_CHILD__ = child;
 };

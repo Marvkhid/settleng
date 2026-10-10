@@ -1,8 +1,9 @@
 import type {
   Categories, CustomerDetail, CustomerSummary, Dashboard, InvoiceStatus, InvoiceView, Method, Page, SaleMethod, Series,
-  TransactionView, Workspace, CsvPreview, ColumnMapping, ImportDetail, ImportSummary,
+  TransactionView, Me, CsvPreview, ColumnMapping, ImportDetail, ImportSummary,
 } from "@/types/api";
 import { getApiUrl } from "./env";
+import { supabase } from "./supabase/client";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public details?: string[]) {
@@ -12,12 +13,27 @@ export class ApiError extends Error {
   get isNotFound() { return this.status === 404; }
 }
 
+/** The signed-in user's Supabase access token, attached as a Bearer header to every API call. */
+async function accessToken(): Promise<string | undefined> {
+  try {
+    const { data } = await supabase().auth.getSession();
+    return data.session?.access_token;
+  } catch {
+    return undefined;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const token = await accessToken();
   try {
     res = await fetch(`${getApiUrl()}/api${path}`, {
       ...init,
-      headers: { ...(init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), ...init?.headers },
+      headers: {
+        ...(init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
       cache: "no-store",
     });
   } catch {
@@ -52,8 +68,10 @@ export interface InvoiceInput {
 
 /** The only place the UI talks to the API. */
 export const api = {
-  workspace: () => request<Workspace>("/demo/workspace"),
-  resetDemo: () => request<{ status: string }>("/demo/reset", json("POST")),
+  me: () => request<Me>("/auth/me"),
+  bootstrap: (b: { fullName: string; businessName: string }) => request<Me>("/auth/bootstrap", json("POST", b)),
+  updateProfile: (b: { email?: string; password?: string }) => request<{ email?: string; passwordChanged?: boolean }>("/auth/me", json("PATCH", b)),
+  deleteAccount: () => request<void>("/auth/account", { method: "DELETE" }),
   dashboard: () => request<Dashboard>("/dashboard"),
   series: (period: "7d" | "30d" | "90d") => request<Series>(`/reports/timeseries?period=${period}`),
 

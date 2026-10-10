@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import { AuditService } from '../common/audit.service';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import {
   addDaysIso,
   isRealDate,
@@ -59,7 +59,7 @@ export class InvoicesService {
 
   private async nextNumber(db: Db): Promise<string> {
     const all = await db.invoice.findMany({
-      where: { businessId: BUSINESS_ID },
+      where: { businessId: requireBusinessId() },
       select: { invoiceNumber: true },
     });
     const max = all.reduce((m, i) => {
@@ -71,7 +71,7 @@ export class InvoicesService {
 
   private async customerOrThrow(db: Db, id: string) {
     const c = await db.customer.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
     });
     if (!c) throw new NotFoundException('We could not find that customer.');
     if (c.archivedAt)
@@ -83,7 +83,7 @@ export class InvoicesService {
 
   async list(q: InvoiceListQuery): Promise<Page<InvoiceView>> {
     const today = todayInLagos();
-    const where: Prisma.InvoiceWhereInput = { businessId: BUSINESS_ID };
+    const where: Prisma.InvoiceWhereInput = { businessId: requireBusinessId() };
     if (q.customerId) where.customerId = q.customerId;
     if (q.search)
       where.OR = [
@@ -105,7 +105,7 @@ export class InvoicesService {
 
   async get(id: string): Promise<InvoiceView> {
     const row = await this.prisma.invoice.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
       include: invoiceInclude,
     });
     if (!row) throw new NotFoundException('We could not find that invoice.');
@@ -178,7 +178,7 @@ export class InvoicesService {
   ) {
     return tx.invoice.create({
       data: {
-        businessId: BUSINESS_ID,
+        businessId: requireBusinessId(),
         customerId: a.customerId,
         invoiceNumber: a.invoiceNumber,
         issueDate: toDbDate(a.issueDate),
@@ -196,9 +196,9 @@ export class InvoicesService {
   }
 
   private async lockedRow(tx: Db, id: string) {
-    await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${id} AND "businessId" = ${BUSINESS_ID} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${id} AND "businessId" = ${requireBusinessId()} FOR UPDATE`;
     const row = await tx.invoice.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
       include: invoiceInclude,
     });
     if (!row) throw new NotFoundException('We could not find that invoice.');

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuditService } from '../common/audit.service';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import { isoDate, isRealDate, todayInLagos, toDbDate } from '../common/dates';
 import { D, money } from '../common/money';
 import { Page, pageOf } from '../common/pagination';
@@ -100,7 +100,9 @@ export class TransactionsService {
   }
 
   async list(q: TransactionListQuery): Promise<Page<TransactionView>> {
-    const where: Prisma.TransactionWhereInput = { businessId: BUSINESS_ID };
+    const where: Prisma.TransactionWhereInput = {
+      businessId: requireBusinessId(),
+    };
     if (q.type) where.type = q.type;
     if (q.source) where.source = q.source;
     if (q.category)
@@ -133,7 +135,7 @@ export class TransactionsService {
 
   async get(id: string): Promise<TransactionView> {
     const t = await this.prisma.transaction.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
       include: txnInclude,
     });
     if (!t) throw new NotFoundException('We could not find that record.');
@@ -142,7 +144,7 @@ export class TransactionsService {
 
   async categories() {
     const rows = await this.prisma.transaction.findMany({
-      where: { businessId: BUSINESS_ID },
+      where: { businessId: requireBusinessId() },
       distinct: ['type', 'category'],
       select: { type: true, category: true },
     });
@@ -162,7 +164,7 @@ export class TransactionsService {
   private async customerCheck(tx: Prisma.TransactionClient, id?: string) {
     if (!id) return;
     const c = await tx.customer.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
     });
     if (!c) throw new NotFoundException('We could not find that customer.');
   }
@@ -174,7 +176,7 @@ export class TransactionsService {
       await this.customerCheck(tx, dto.customerId);
       const t = await tx.transaction.create({
         data: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           type: dto.type,
           source: 'MANUAL',
           amount: D(dto.amount).toFixed(2),
@@ -227,7 +229,7 @@ export class TransactionsService {
       await this.customerCheck(tx, dto.customerId);
       const t = await tx.transaction.create({
         data: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           type: 'INCOME',
           source: 'MANUAL',
           amount: D(dto.amount).toFixed(2),
@@ -271,7 +273,7 @@ export class TransactionsService {
     if (dto.date !== undefined) this.dateOrToday(dto.date);
     return this.prisma.$transaction(async (tx) => {
       const t = await tx.transaction.findFirst({
-        where: { id, businessId: BUSINESS_ID },
+        where: { id, businessId: requireBusinessId() },
       });
       if (!t) throw new NotFoundException('We could not find that record.');
       if (t.source !== 'MANUAL')
@@ -303,7 +305,7 @@ export class TransactionsService {
   async remove(id: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const t = await tx.transaction.findFirst({
-        where: { id, businessId: BUSINESS_ID },
+        where: { id, businessId: requireBusinessId() },
       });
       if (!t) throw new NotFoundException('We could not find that record.');
       if (t.source !== 'MANUAL')

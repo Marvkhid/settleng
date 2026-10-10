@@ -47,6 +47,8 @@ enum MatchStatus {
 
 model Business {
   id        String   @id @default(cuid())
+  /// The Supabase user id that owns this business (one business per owner).
+  ownerId   String   @unique
   name      String
   currency  String   @default("NGN")
   createdAt DateTime @default(now())
@@ -57,6 +59,19 @@ model Business {
   transactions          Transaction[]
   reconciliationImports ReconciliationImport[]
   auditEvents           AuditEvent[]
+
+  @@index([ownerId])
+}
+
+/// Per-user profile. `userId` is the Supabase auth user id; `fullName` comes from sign-up metadata.
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  fullName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Customer {

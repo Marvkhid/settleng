@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuditService } from '../common/audit.service';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import { isoDate, todayInLagos, toDbDate } from '../common/dates';
 import { D, money } from '../common/money';
 import { computeInvoice, invoiceInclude } from '../invoices/invoice-view';
@@ -71,7 +71,11 @@ export class ReconciliationService {
     today: string,
   ) {
     const rows = await db.invoice.findMany({
-      where: { businessId: BUSINESS_ID, isDraft: false, voidedAt: null },
+      where: {
+        businessId: requireBusinessId(),
+        isDraft: false,
+        voidedAt: null,
+      },
       include: invoiceInclude,
     });
     return rows
@@ -91,7 +95,7 @@ export class ReconciliationService {
     if (parsed.problems.length) return { parsed, rows: [] as AnalysedRow[] };
     const existing = await this.prisma.importedTransaction.findMany({
       where: {
-        import: { businessId: BUSINESS_ID },
+        import: { businessId: requireBusinessId() },
         matchStatus: { notIn: ['INVALID', 'DUPLICATE'] },
       },
       select: {
@@ -200,7 +204,7 @@ export class ReconciliationService {
     const imp = await this.prisma.$transaction(async (tx) => {
       const created = await tx.reconciliationImport.create({
         data: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           filename: file!.originalname.slice(0, 200),
           rowCount: rows.length,
           status: rows.some((r) => r.matchStatus === 'SUGGESTED_MATCH')
@@ -241,7 +245,7 @@ export class ReconciliationService {
 
   async listImports() {
     const imports = await this.prisma.reconciliationImport.findMany({
-      where: { businessId: BUSINESS_ID },
+      where: { businessId: requireBusinessId() },
       orderBy: { createdAt: 'desc' },
       include: { rows: { select: { matchStatus: true } } },
     });
@@ -264,7 +268,7 @@ export class ReconciliationService {
 
   async getImport(id: string) {
     const imp = await this.prisma.reconciliationImport.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
       include: { rows: { orderBy: { rawRowNumber: 'asc' } } },
     });
     if (!imp) throw new NotFoundException('We could not find that import.');
@@ -337,7 +341,7 @@ export class ReconciliationService {
     await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "ImportedTransaction" WHERE "id" = ${rowId} FOR UPDATE`;
       const row = await tx.importedTransaction.findFirst({
-        where: { id: rowId, import: { businessId: BUSINESS_ID } },
+        where: { id: rowId, import: { businessId: requireBusinessId() } },
       });
       if (!row) throw new NotFoundException('We could not find that row.');
       if (row.matchStatus === 'MATCHED')
@@ -389,7 +393,7 @@ export class ReconciliationService {
   async reject(rowId: string) {
     await this.prisma.$transaction(async (tx) => {
       const row = await tx.importedTransaction.findFirst({
-        where: { id: rowId, import: { businessId: BUSINESS_ID } },
+        where: { id: rowId, import: { businessId: requireBusinessId() } },
       });
       if (!row) throw new NotFoundException('We could not find that row.');
       if (row.matchStatus !== 'SUGGESTED_MATCH')

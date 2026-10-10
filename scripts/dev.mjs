@@ -1,5 +1,4 @@
 // `npm run dev`: API (with auto-restart) + web app together, using the database in api/.env (for example Supabase).
-// No database yet? Use `npm run preview` instead: it starts a local one for you.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +11,8 @@ if (!hasDb) {
   console.error(`
 No database is configured for "npm run dev" yet (api/.env is missing a DATABASE_URL).
 
-  Want to see the app right now, with no accounts?   npm run preview
-  Using Supabase?  copy api/.env.example to api/.env and fill in DATABASE_URL and DIRECT_URL,
-                   then run  npm run db:deploy  and  npm run db:seed  once.
+  Using Supabase?  copy api/.env.example to api/.env and fill in DATABASE_URL, DIRECT_URL and SUPABASE_URL,
+                   then run  npm run db:deploy  once.
 `);
   process.exit(1);
 }

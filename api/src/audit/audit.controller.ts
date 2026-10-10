@@ -2,7 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import { PrismaService } from '../prisma/prisma.service';
 
 class AuditQuery {
@@ -17,7 +17,7 @@ export class AuditController {
   @Get()
   async list(@Query() q: AuditQuery) {
     const rows = await this.prisma.auditEvent.findMany({
-      where: { businessId: BUSINESS_ID },
+      where: { businessId: requireBusinessId() },
       orderBy: { createdAt: 'desc' },
       take: q.limit,
     });

@@ -32,11 +32,20 @@ export function friendlyDate(iso: string, today: string = todayIso()): string {
   return y === Number(today.slice(0, 4)) ? label : `${label} ${y}`;
 }
 
+/**
+ * Time of day from the visitor's own clock (so it matches what they see, computed on the client to
+ * avoid a hydration mismatch). Morning 5:00–11:59, afternoon 12:00–16:59, evening 17:00 onward.
+ */
 export function greeting(now: Date = new Date()): string {
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(now));
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
+  const hour = now.getHours(); // local time, no timezone forced
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+/** "Good morning, Marvel" — falls back to a neutral greeting when the name isn't loaded yet. */
+export function greetingFor(name: string | null | undefined, now: Date = new Date()): string {
+  return name ? `${greeting(now)}, ${name}` : greeting(now);
 }
 
 export function shortDay(iso: string): string {

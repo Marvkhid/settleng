@@ -1,0 +1,37 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mC:/Users/MARVEL/Desktop/settleng/web[39m
+
+ [32m✓[39m lib/format.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 93[2mms[22m[39m
+[90mstdout[2m | test/debug-login.test.tsx[2m > [22m[2mdebug[2m > [22m[2mrenders with Toaster as proper wrapper (renders children)
+[22m[39m===== DOM =====
+<section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false" data-react-aria-top-layer="true"></section><div><button type="button">Log in</button><a href="/signup">Create an account</a></div>
+===== END =====
+
+[90mstdout[2m | test/debug-login.test.tsx[2m > [22m[2mdebug[2m > [22m[2mrenders with Toaster as wrapper that returns only Toaster (children discarded)
+[22m[39m===== DOM (children-discarding wrapper) =====
+<section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false" data-react-aria-top-layer="true"></section>
+===== END =====
+
+ [32m✓[39m test/debug-login.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 424[2mms[22m[39m
+   [33m[2m✓[22m[39m debug[2m > [22mrenders with Toaster as proper wrapper (renders children) [33m 407[2mms[22m[39m
+ [32m✓[39m lib/theme.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 84[2mms[22m[39m
+ [32m✓[39m lib/schemas.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m test/auth-pages.test.tsx [2m([22m[2m21 tests[22m[2m)[22m[33m 10375[2mms[22m[39m
+   [33m[2m✓[22m[39m login page[2m > [22mrenders the email and password fields and a log in button [33m 549[2mms[22m[39m
+   [33m[2m✓[22m[39m login page[2m > [22msigns in and navigates on valid credentials [33m 774[2mms[22m[39m
+   [33m[2m✓[22m[39m login page[2m > [22mshows a friendly message for invalid credentials [33m 757[2mms[22m[39m
+   [33m[2m✓[22m[39m login page[2m > [22mshows a friendly message when the email isn't confirmed [33m 717[2mms[22m[39m
+   [33m[2m✓[22m[39m login page[2m > [22mshows a generic message for other errors [33m 711[2mms[22m[39m
+   [33m[2m✓[22m[39m login page[2m > [22mnavigates to the next param when provided [33m 665[2mms[22m[39m
+   [33m[2m✓[22m[39m signup page[2m > [22mcreates a Supabase account and bootstraps the business on success [33m 1329[2mms[22m[39m
+   [33m[2m✓[22m[39m signup page[2m > [22msends to the check-your-inbox note when email confirmation is on [33m 1451[2mms[22m[39m
+   [33m[2m✓[22m[39m signup page[2m > [22mshows a friendly message when the email already exists [33m 1393[2mms[22m[39m
+   [33m[2m✓[22m[39m forgot password page[2m > [22msends a reset email and shows a confirmation [33m 371[2mms[22m[39m
+   [33m[2m✓[22m[39m forgot password page[2m > [22mshows a generic message when sending fails [33m 458[2mms[22m[39m
+   [33m[2m✓[22m[39m reset password page[2m > [22mupdates the password and navigates on success [33m 373[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m45 passed[39m[22m[90m (45)[39m
+[2m   Start at [22m 21:24:02
+[2m   Duration [22m 16.35s[2m (transform 721ms, setup 3.50s, collect 2.59s, tests 11.00s, environment 14.00s, prepare 1.45s)[22m
+

@@ -41,7 +41,7 @@ for (const [port, what] of [[3000, 'web app'], [4000, 'API'], [54320, 'local dat
 }
 
 console.log('');
-exists('api', '.env') ? ok('api/.env found (used by npm run dev)') : console.log('  - api/.env not created yet. Needed only for npm run dev with Supabase. Copy api/.env.example to api/.env.');
+exists('api', '.env') ? ok('api/.env found (used by npm run dev)') : console.log('  - api/.env not created yet. Needed for npm run dev with Supabase. Copy api/.env.example to api/.env.');
 console.log(`  - ${os.platform()} ${os.release()}`);
-console.log(blockers ? `\n${blockers} problem(s) to fix above.\n` : '\nEverything needed is in place. Try:  npm run preview\n');
+console.log(blockers ? `\n${blockers} problem(s) to fix above.\n` : '\nEverything needed is in place. Try:  npm run dev\n');
 process.exit(blockers ? 1 : 0);

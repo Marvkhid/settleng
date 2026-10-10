@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="figure text-7xl font-extrabold text-emerald">404</p>
       <h1 className="text-3xl font-extrabold">We couldn&apos;t find that page</h1>
       <p className="text-slate">The link may be wrong or the page may have moved.</p>
-      <Link href="/dashboard" className={buttonVariants()}>Go to Home</Link>
+      <Link href="/" className={buttonVariants()}>Go to home</Link>
     </main>
   );
 }

@@ -1,0 +1,205 @@
+"use client";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase/client";
+import { api, ApiError } from "@/lib/api-client";
+import { useAuth } from "@/components/auth/auth-provider";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/shell/page-header";
+
+function messageFor(code: string, fallback: string): string {
+  if (code === "email_exists") return "That email is already in use by another account.";
+  if (code === "weak_password") return "Please choose a password of at least 6 characters.";
+  return fallback;
+}
+
+export function SettingsForm() {
+  const { me, firstName, businessName } = useAuth();
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [busy, startTransition] = useTransition();
+
+  useEffect(() => {
+    supabase()
+      .auth.getUser()
+      .then(({ data }) => { if (data.user) setEmail(data.user.email ?? ""); })
+      .catch(() => {});
+  }, []);
+
+  async function changeEmail(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      try {
+        const { error } = await supabase().auth.updateUser({ email: email.trim() });
+        if (error) {
+          toast.error(messageFor(error.code ?? "", error.message));
+          return;
+        }
+        toast.success("Email updated. You'll use it to sign in from now on.");
+      } catch {
+        toast.error("We couldn't update your email. Please try again.");
+      }
+    });
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast.error("The two passwords don't match.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const { error } = await supabase().auth.updateUser({ password: newPassword });
+        if (error) {
+          toast.error(messageFor(error.code ?? "", error.message));
+          return;
+        }
+        toast.success("Password changed.");
+        setNewPassword("");
+        setConfirmPassword("");
+      } catch {
+        toast.error("We couldn't change your password. Please try again.");
+      }
+    });
+  }
+
+  async function deleteAccount() {
+    setDeleteLoading(true);
+    try {
+      await api.deleteAccount?.();
+      toast.success("Your account has been deleted.");
+      await supabase().auth.signOut();
+      router.replace("/login");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "We couldn't delete your account. Please try again.";
+      toast.error(msg);
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="Settings" subtitle={firstName ? `Signed in as ${firstName}` : undefined} />
+      <div className="max-w-2xl space-y-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="mb-4 text-lg font-extrabold tracking-tight">Account</h2>
+          <div className="space-y-6">
+            <form onSubmit={changeEmail} className="space-y-4" noValidate>
+              <Field label="Email address" htmlFor="email" hint="Used to sign in and receive notifications.">
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </Field>
+              <div className="flex justify-end">
+                <Button type="submit" size="sm" loading={busy}>
+                  Update email
+                </Button>
+              </div>
+            </form>
+
+            <form onSubmit={changePassword} className="space-y-4" noValidate>
+              <Field label="Current password" htmlFor="currentPassword">
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </Field>
+              <Field label="New password" htmlFor="newPassword" hint="At least 6 characters.">
+                <Input
+                  id="newPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </Field>
+              <Field label="Confirm new password" htmlFor="confirmPassword">
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </Field>
+              <div className="flex justify-end">
+                <Button type="submit" variant="outline" size="sm" loading={busy}>
+                  Change password
+                </Button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="mb-4 text-lg font-extrabold tracking-tight">Business</h2>
+          <dl className="divide-y divide-line overflow-hidden">
+            <div className="flex justify-between gap-4 py-4 first:pt-0 last:pb-0">
+              <dt className="font-semibold">Business name</dt>
+              <dd className="text-ink-soft">{businessName ?? "Not set up yet"}</dd>
+            </div>
+            <div className="flex justify-between gap-4 py-4 first:pt-0 last:pb-0">
+              <dt className="font-semibold">Currency</dt>
+              <dd className="text-ink-soft">
+                {me?.business?.currency === "NGN" ? "Nigerian naira (₦)" : me?.business?.currency ?? "Nigerian naira (₦)"}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-lg font-extrabold tracking-tight text-red">Danger zone</h2>
+          <p className="mb-4 text-sm text-slate">
+            Permanently delete your account and all of your business data. This can't be undone.
+          </p>
+          <Button variant="dangerOutline" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+            Delete account
+          </Button>
+        </section>
+
+        <p className="rounded-2xl bg-sunken p-4 text-sm text-slate">
+          SettleNG records what you enter. It does not connect to banks, hold money or process payments.
+        </p>
+      </div>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete your account?"
+        description="This will permanently delete your business, customers, invoices, transactions and your sign-in account. This can't be undone."
+        confirmLabel="Delete my account"
+        destructive
+        loading={deleteLoading}
+        onConfirm={deleteAccount}
+      />
+    </>
+  );
+}

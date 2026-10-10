@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, HandCoins, ListChecks, Plus, ReceiptText, TrendingDown, UserRoundSearch, Wallet } from "lucide-react";
 import { useActions } from "@/components/forms/actions";
-import { DemoBadge } from "@/components/shell/app-shell";
+import { useAuth } from "@/components/auth/auth-provider";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/states";
 import { useGreeting } from "@/hooks/use-greeting";
 import { useQuery } from "@/hooks/use-query";
@@ -24,7 +24,7 @@ function Hero({ d }: { d: Dashboard }) {
         <h2 id="sales-today" className="text-lg font-semibold text-white/80">Sales today</h2>
         <p className="figure mt-1 text-[clamp(2.75rem,11vw,5rem)] font-extrabold leading-none">{formatNaira(d.salesToday)}</p>
       </div>
-      <dl className="grid grid-cols-3 divide-x divide-white/15 border-t border-white/15 bg-ink/60">
+      <dl className="grid grid-cols-3 divide-x divide-white/15 border-t border-white/15 bg-black/20">
         {strip.map((s) => (
           <div key={s.label} className="px-3 py-4 md:px-8">
             <dt className="flex items-center gap-1.5 text-sm text-white/75"><s.Icon className="size-4 shrink-0" aria-hidden /> {s.label}</dt>
@@ -135,13 +135,15 @@ function DashboardSkeleton() {
 
 export function DashboardView() {
   const q = useQuery(() => api.dashboard(), []);
-  const hello = useGreeting();
+  const { firstName, businessName } = useAuth();
+  const hello = useGreeting(firstName);
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-extrabold md:text-4xl">{hello}</h1>
-        <p className="mt-1 text-lg text-slate">Here&apos;s how your business is doing.</p>
-        <DemoBadge className="mt-3 sm:hidden" />
+        <p className="mt-1 text-lg text-slate">
+          {businessName ? <>Here&apos;s how <span className="font-semibold text-ink">{businessName}</span> is doing.</> : "Here's how your business is doing."}
+        </p>
       </div>
       {q.error && !q.data ? <ErrorState error={q.error} onRetry={q.refetch} title="We couldn't load your dashboard" /> : !q.data ? <DashboardSkeleton /> : (
         <div className="space-y-6">

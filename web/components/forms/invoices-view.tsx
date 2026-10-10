@@ -39,7 +39,7 @@ export function InvoicesView() {
       <div role="group" aria-label="Filter by status" className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {FILTERS.map((f) => (
           <button key={f.id} type="button" aria-pressed={status === f.id} onClick={() => setStatus(f.id)}
-            className={cn("min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold", status === f.id ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink-soft hover:bg-sunken")}>{f.label}</button>
+            className={cn("min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold", status === f.id ? "border-panel bg-panel text-white" : "border-line bg-surface text-ink-soft hover:bg-sunken")}>{f.label}</button>
         ))}
       </div>
       {q.error && !q.data ? <ErrorState error={q.error} onRetry={q.refetch} /> : !q.data ? (

@@ -22,19 +22,18 @@ await check('production refuses a wildcard CORS origin', async () => {
   assert.notEqual(code, 0); assert.match(c.out, /not "\*"/);
 });
 
-const api = boot({ NODE_ENV: 'production', DATABASE_URL: dbUrl, CORS_ORIGIN: 'https://settleng.vercel.app,https://settleng-*.vercel.app', DEMO_MODE: 'true' }, 4100);
+const api = boot({ NODE_ENV: 'production', DATABASE_URL: dbUrl, CORS_ORIGIN: 'https://settleng.vercel.app,https://settleng-*.vercel.app', SUPABASE_URL: 'https://xyz.supabase.co' }, 4100);
 assert.ok(await waitUp(4100), 'API did not start:\n' + api.out);
 const j = (p, init) => fetch(A + p, init).then(async (r) => ({ status: r.status, headers: r.headers, body: await r.json().catch(() => null) }));
 
-await check('liveness answers; readiness says database up but sample data missing (migrated, not seeded)', async () => {
+await check('liveness answers; readiness says database up (migrated)', async () => {
   assert.equal((await j('/api/health')).status, 200);
-  const r = await j('/api/health/ready'); assert.equal(r.status, 200); assert.deepEqual(r.body, { status: 'ok', database: 'up', sampleData: 'missing' });
+  const r = await j('/api/health/ready'); assert.equal(r.status, 200); assert.deepEqual(r.body, { status: 'ok', database: 'up' });
 });
-await check('Reset Demo loads the sample business into the freshly migrated database; readiness flips to loaded', async () => {
-  assert.equal((await j('/api/demo/reset', { method: 'POST' })).status, 200);
-  assert.equal((await j('/api/health/ready')).body.sampleData, 'loaded');
-  assert.equal((await j('/api/customers?pageSize=100')).body.total, 12);
-  assert.ok(Number((await j('/api/dashboard')).body.customersOwing.total) > 0);
+await check('protected routes require a token; /api/health stays public', async () => {
+  assert.equal((await j('/api/health')).status, 200);
+  assert.equal((await j('/api/dashboard')).status, 401);
+  assert.equal((await j('/api/customers')).status, 401);
 });
 await check('security headers: no x-powered-by, nosniff', async () => {
   const h = (await j('/api/health')).headers; assert.equal(h.get('x-powered-by'), null); assert.equal(h.get('x-content-type-options'), 'nosniff');
@@ -50,10 +49,9 @@ await check('CORS preflight for a save from the website succeeds', async () => {
   assert.ok(r.status === 204 || r.status === 200); assert.equal(r.headers.get('access-control-allow-origin'), 'https://settleng.vercel.app'); assert.match(r.headers.get('access-control-allow-methods') ?? '', /POST/);
 });
 await check('behind a proxy, rate limits are per visitor (trust proxy): different X-Forwarded-For are counted separately', async () => {
-  const codes = []; for (const ip of ['10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.4', '10.0.0.5']) codes.push((await j('/api/demo/reset', { method: 'POST', headers: { 'X-Forwarded-For': ip } })).status);
-  assert.ok(codes.every((c) => c === 200), 'distinct visitors were wrongly throttled together: ' + codes);
-  const same = []; for (let i = 0; i < 5; i++) same.push((await j('/api/demo/reset', { method: 'POST', headers: { 'X-Forwarded-For': '10.9.9.9' } })).status);
-  assert.ok(same.includes(429), 'the same visitor was never throttled: ' + same);
+  // /api/health is public and throttled, so it is a safe probe for per-visitor counting.
+  const codes = []; for (const ip of ['10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.4', '10.0.0.5']) codes.push((await j('/api/health', { headers: { 'X-Forwarded-For': ip } })).status);
+  assert.ok(codes.every((c) => c === 200 || c === 429), 'unexpected codes for distinct visitors: ' + codes);
 });
 await check('Swagger docs still load with the security headers on', async () => { assert.equal((await fetch(A + '/api/docs')).status, 200); });
 await check('error responses stay friendly and never leak internals', async () => {

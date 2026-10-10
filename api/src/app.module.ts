@@ -4,7 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
-import { DemoModule } from './demo/demo.module';
+import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
 import { CustomersModule } from './customers/customers.module';
 import { InvoicesModule } from './invoices/invoices.module';
@@ -22,8 +22,8 @@ import { AuditController } from './audit/audit.controller';
       skipIf: () => process.env.THROTTLE_DISABLED === 'true',
     }),
     PrismaModule,
+    AuthModule,
     CommonModule,
-    DemoModule,
     CustomersModule,
     InvoicesModule,
     PaymentsModule,

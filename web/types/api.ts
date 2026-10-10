@@ -20,8 +20,10 @@ export interface Dashboard {
   topDebtors: Debtor[]; recentActivity: ActivityItem[]; chart: Series;
 }
 
-export interface Workspace {
-  demoMode: boolean; notice: string; business: { id: string; name: string; currency: string } | null;
+/** The signed-in user plus their business (null until onboarding completes). */
+export interface Me {
+  userId: string; fullName: string | null;
+  business: { id: string; name: string; currency: string } | null;
 }
 
 export interface CustomerSummary {

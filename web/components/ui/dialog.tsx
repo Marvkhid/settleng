@@ -12,7 +12,7 @@ export function Sheet({ open, onOpenChange, title, description, children, classN
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
-        <D.Overlay className="fade-in fixed inset-0 z-50 bg-ink/50" />
+        <D.Overlay className="fade-in fixed inset-0 z-50 bg-black/50" />
         <D.Content
           aria-describedby={description ? undefined : undefined}
           className={cn(

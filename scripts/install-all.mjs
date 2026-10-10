@@ -49,4 +49,4 @@ Installing "${failed}" did not finish. What usually fixes it:
 More help: docs/TROUBLESHOOTING.md`);
   process.exit(1);
 }
-console.log('\nAll dependencies installed.\n\nNext:\n  npm run doctor    check everything is in place\n  npm run preview   try the app with a local database (no accounts needed)\n');
+console.log('\nAll dependencies installed.\n\nNext:\n  npm run doctor    check everything is in place\n  npm run dev       run the API + web app (needs api/.env)\n');

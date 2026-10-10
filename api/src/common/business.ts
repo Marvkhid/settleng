@@ -1,4 +1,10 @@
-import { DEMO_BUSINESS_ID } from '../seed/seed-data';
+import { currentBusinessId } from '../auth/tenant-context';
 
-/** The single demo business. The business is NEVER taken from the request. */
-export const BUSINESS_ID = DEMO_BUSINESS_ID;
+/**
+ * The authenticated user's business id, resolved from the verified Supabase token on every request.
+ * It is never taken from the client, so a request can only ever touch its own business's data.
+ * Throws if the user has not finished onboarding.
+ */
+export function requireBusinessId(): string {
+  return currentBusinessId();
+}

@@ -2,7 +2,6 @@ export interface AppEnv {
   port: number;
   nodeEnv: string;
   corsOrigins: string[];
-  demoMode: boolean;
   isProduction: boolean;
 }
 
@@ -36,6 +35,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
       problems.push(
         'CORS_ORIGIN must be full URLs like https://settleng.vercel.app, not "*".',
       );
+    if (!source.SUPABASE_URL && !source.SUPABASE_JWT_SECRET)
+      problems.push(
+        'SUPABASE_URL is not set (your Supabase project URL, e.g. https://xyz.supabase.co). It lets the API verify sign-in tokens.',
+      );
     if (problems.length)
       throw new Error(
         `Cannot start in production:\n - ${problems.join('\n - ')}`,
@@ -46,7 +49,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     port,
     nodeEnv,
     corsOrigins,
-    demoMode: (source.DEMO_MODE ?? 'true') === 'true',
     isProduction,
   };
 }

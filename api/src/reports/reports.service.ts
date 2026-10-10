@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import {
   addDaysIso,
   isoDate,
@@ -45,7 +45,7 @@ export class ReportsService {
     const rows = await this.prisma.$queryRaw<{ d: Date; total: string }[]>`
       SELECT i."issueDate" AS d, SUM(it."quantity" * it."unitPrice")::text AS total
       FROM "Invoice" i JOIN "InvoiceItem" it ON it."invoiceId" = i."id"
-      WHERE i."businessId" = ${BUSINESS_ID} AND i."isDraft" = false AND i."voidedAt" IS NULL
+      WHERE i."businessId" = ${requireBusinessId()} AND i."isDraft" = false AND i."voidedAt" IS NULL
         AND i."issueDate" >= ${toDbDate(r.from)} AND i."issueDate" <= ${toDbDate(r.to)}
       GROUP BY i."issueDate"`;
     return new Map(rows.map((x) => [isoDate(x.d), D(x.total)]));
@@ -55,7 +55,7 @@ export class ReportsService {
     const rows = await this.prisma.transaction.groupBy({
       by: ['date', 'type', 'source'],
       where: {
-        businessId: BUSINESS_ID,
+        businessId: requireBusinessId(),
         date: { gte: toDbDate(r.from), lte: toDbDate(r.to) },
       },
       _sum: { amount: true },
@@ -77,7 +77,7 @@ export class ReportsService {
       this.prisma.transaction.groupBy({
         by: ['type', 'category'],
         where: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           date: { gte: toDbDate(range.from), lte: toDbDate(range.to) },
         },
         _sum: { amount: true },
@@ -142,7 +142,11 @@ export class ReportsService {
   async customersOwing() {
     const today = todayInLagos();
     const rows = await this.prisma.invoice.findMany({
-      where: { businessId: BUSINESS_ID, isDraft: false, voidedAt: null },
+      where: {
+        businessId: requireBusinessId(),
+        isDraft: false,
+        voidedAt: null,
+      },
       include: invoiceInclude,
       orderBy: { dueDate: 'asc' },
     });
@@ -235,7 +239,7 @@ export class ReportsService {
       this.summary({ from: today, to: today }),
       this.customersOwing(),
       this.prisma.transaction.findMany({
-        where: { businessId: BUSINESS_ID },
+        where: { businessId: requireBusinessId() },
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
         take: 10,
         include: {
@@ -281,7 +285,7 @@ export class ReportsService {
     if (type === 'transactions') {
       const rows = await this.prisma.transaction.findMany({
         where: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           date: { gte: toDbDate(range.from), lte: toDbDate(range.to) },
         },
         include: { customer: { select: { name: true } } },
@@ -317,7 +321,7 @@ export class ReportsService {
     }
     const invs = await this.prisma.invoice.findMany({
       where: {
-        businessId: BUSINESS_ID,
+        businessId: requireBusinessId(),
         ...(type === 'invoices'
           ? {
               issueDate: { gte: toDbDate(range.from), lte: toDbDate(range.to) },

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import { AuditService } from '../common/audit.service';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import { todayInLagos } from '../common/dates';
 import { money } from '../common/money';
 import { Page, pageOf } from '../common/pagination';
@@ -45,7 +45,7 @@ export class CustomersService {
     const today = todayInLagos();
     const rows = await this.prisma.invoice.findMany({
       where: {
-        businessId: BUSINESS_ID,
+        businessId: requireBusinessId(),
         customerId: { in: customerIds },
         isDraft: false,
         voidedAt: null,
@@ -89,7 +89,9 @@ export class CustomersService {
   }
 
   async list(q: CustomerListQuery): Promise<Page<CustomerSummary>> {
-    const where: Prisma.CustomerWhereInput = { businessId: BUSINESS_ID };
+    const where: Prisma.CustomerWhereInput = {
+      businessId: requireBusinessId(),
+    };
     if (!q.includeArchived) where.archivedAt = null;
     if (q.search)
       where.OR = [
@@ -110,14 +112,14 @@ export class CustomersService {
 
   async get(id: string) {
     const c = await this.prisma.customer.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
     });
     if (!c) throw new NotFoundException('We could not find that customer.');
     const today = todayInLagos();
     const [totals, invoices] = await Promise.all([
       this.totalsFor([id]),
       this.prisma.invoice.findMany({
-        where: { businessId: BUSINESS_ID, customerId: id },
+        where: { businessId: requireBusinessId(), customerId: id },
         include: invoiceInclude,
         orderBy: { issueDate: 'desc' },
       }),
@@ -152,7 +154,7 @@ export class CustomersService {
     return this.prisma.$transaction(async (tx) => {
       const c = await tx.customer.create({
         data: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           name: dto.name.trim(),
           email: dto.email,
           phone: dto.phone,
@@ -172,7 +174,7 @@ export class CustomersService {
   async update(id: string, dto: UpdateCustomerDto): Promise<CustomerSummary> {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.customer.findFirst({
-        where: { id, businessId: BUSINESS_ID },
+        where: { id, businessId: requireBusinessId() },
       });
       if (!existing)
         throw new NotFoundException('We could not find that customer.');
@@ -199,7 +201,7 @@ export class CustomersService {
   async setArchived(id: string, archived: boolean): Promise<CustomerSummary> {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.customer.findFirst({
-        where: { id, businessId: BUSINESS_ID },
+        where: { id, businessId: requireBusinessId() },
       });
       if (!existing)
         throw new NotFoundException('We could not find that customer.');

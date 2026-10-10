@@ -1,7 +1,7 @@
 {
   "name": "settleng",
   "private": true,
-  "description": "SettleNG: portfolio fintech demo for small Nigerian businesses",
+  "description": "SettleNG: finance tracker for small Nigerian businesses (Next.js web + NestJS API + Supabase)",
   "scripts": {
     "install:all": "node scripts/install-all.mjs",
     "dev:api": "npm run start:dev --prefix api",
@@ -12,8 +12,6 @@
     "test:e2e": "npm run test:e2e --prefix api",
     "test:int": "npm run test:int --prefix api",
     "test:prod-boot": "npm run test:prod-boot --prefix api",
-    "db:seed": "npm run db:seed --prefix api",
-    "preview": "node scripts/preview.mjs",
     "doctor": "node scripts/doctor.mjs",
     "dev": "node scripts/dev.mjs",
     "db:deploy": "npm run db:deploy --prefix api",

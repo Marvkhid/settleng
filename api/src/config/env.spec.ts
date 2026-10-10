@@ -5,7 +5,6 @@ describe('loadEnv', () => {
     const env = loadEnv({});
     expect(env.port).toBe(4000);
     expect(env.corsOrigins).toEqual(['http://localhost:3000']);
-    expect(env.demoMode).toBe(true);
     expect(env.isProduction).toBe(false);
   });
 
@@ -23,6 +22,7 @@ describe('loadEnv', () => {
       NODE_ENV: 'production',
       DATABASE_URL: 'postgresql://x',
       CORS_ORIGIN: 'https://settleng.vercel.app',
+      SUPABASE_URL: 'https://xyz.supabase.co',
     };
 
     it('starts with a complete configuration', () => {

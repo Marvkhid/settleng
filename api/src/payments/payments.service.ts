@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import { AuditService } from '../common/audit.service';
-import { BUSINESS_ID } from '../common/business';
+import { requireBusinessId } from '../common/business';
 import { isRealDate, isoDate, todayInLagos, toDbDate } from '../common/dates';
 import { D, money } from '../common/money';
 import { Prisma } from '../generated/prisma/client';
@@ -60,9 +60,9 @@ export class PaymentsService {
       );
     const reference = input.reference?.trim() || null;
 
-    await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${input.invoiceId} AND "businessId" = ${BUSINESS_ID} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${input.invoiceId} AND "businessId" = ${requireBusinessId()} FOR UPDATE`;
     const row = await tx.invoice.findFirst({
-      where: { id: input.invoiceId, businessId: BUSINESS_ID },
+      where: { id: input.invoiceId, businessId: requireBusinessId() },
       include: invoiceInclude,
     });
     if (!row) throw new NotFoundException('We could not find that invoice.');
@@ -117,7 +117,7 @@ export class PaymentsService {
     });
     const txn = await tx.transaction.create({
       data: {
-        businessId: BUSINESS_ID,
+        businessId: requireBusinessId(),
         customerId: row.customerId,
         type: 'INCOME',
         source: input.importedTransactionId ? 'IMPORTED' : 'INVOICE_PAYMENT',
@@ -159,14 +159,14 @@ export class PaymentsService {
   async recordForCustomer(customerId: string, dto: RecordPaymentDto) {
     const result = await this.prisma.$transaction(async (tx) => {
       const customer = await tx.customer.findFirst({
-        where: { id: customerId, businessId: BUSINESS_ID },
+        where: { id: customerId, businessId: requireBusinessId() },
       });
       if (!customer)
         throw new NotFoundException('We could not find that customer.');
       const today = todayInLagos();
       const invoices = await tx.invoice.findMany({
         where: {
-          businessId: BUSINESS_ID,
+          businessId: requireBusinessId(),
           customerId,
           isDraft: false,
           voidedAt: null,
@@ -217,7 +217,7 @@ export class PaymentsService {
 
   private async invoiceView(id: string): Promise<InvoiceView> {
     const row = await this.prisma.invoice.findFirst({
-      where: { id, businessId: BUSINESS_ID },
+      where: { id, businessId: requireBusinessId() },
       include: invoiceInclude,
     });
     if (!row) throw new NotFoundException('We could not find that invoice.');

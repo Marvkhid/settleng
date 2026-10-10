@@ -13,11 +13,11 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      - key: DEMO_MODE
-        value: "true"
       - key: DATABASE_URL     # Supabase pooled connection string (port 6543)
         sync: false
       - key: DIRECT_URL       # Supabase direct / session connection string (port 5432), used for migrations
+        sync: false
+      - key: SUPABASE_URL     # your Supabase project URL, for example https://xyz.supabase.co (verifies sign-in tokens)
         sync: false
       - key: CORS_ORIGIN      # your website URL, for example https://settleng.vercel.app
         sync: false
