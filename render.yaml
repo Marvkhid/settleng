@@ -1,5 +1,8 @@
 # Render Blueprint for the SettleNG API. Render: New > Blueprint > pick this repo.
 # The web app is deployed separately on Vercel (Root Directory: web). See docs/DEPLOYMENT.md.
+#
+# Tip: create the service via the Blueprint (not by connecting the GitHub repo directly) so
+# Render picks up rootDir, buildCommand, startCommand and the env var templates from this file.
 services:
   - type: web
     name: settleng-api
