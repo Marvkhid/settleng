@@ -2,6 +2,8 @@
   "name": "settleng",
   "private": true,
   "description": "SettleNG: finance tracker for small Nigerian businesses (Next.js web + NestJS API + Supabase)",
+  "packageManager": "npm@11.11.0",
+  "workspaces": ["api", "web"],
   "scripts": {
     "install:all": "node scripts/install-all.mjs",
     "dev:api": "npm run start:dev --prefix api",
