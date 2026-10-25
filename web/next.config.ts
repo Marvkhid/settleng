@@ -16,14 +16,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Pin the workspace root so Turbopack doesn't jump up to a parent lockfile. The web app owns
-  // web/package-lock.json; there is intentionally no root lockfile.
-  // Disable Turbopack to avoid lightningcss native module error (
-  // VERCEL_TURBO_DISABLED=true is set in project env vars, but adding turbo config here ensures
-  // SWC is used even if Turbopack is enabled on the Vercel dashboard)
-  turbo: {
-    disable: true,
-  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
