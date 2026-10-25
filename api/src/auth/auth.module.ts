@@ -10,7 +10,11 @@ import { TenantMiddleware } from './tenant.middleware';
 @Module({
   controllers: [AuthController],
   // SupabaseJwtService needs PrismaService, which is exported by the global PrismaModule.
-  providers: [SupabaseJwtService, SupabaseAdminService, { provide: APP_GUARD, useClass: AuthGuard }],
+  providers: [
+    SupabaseJwtService,
+    SupabaseAdminService,
+    { provide: APP_GUARD, useClass: AuthGuard },
+  ],
   exports: [SupabaseJwtService, SupabaseAdminService],
 })
 export class AuthModule implements NestModule {

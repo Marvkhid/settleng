@@ -17,9 +17,15 @@ function messageFor(code: string, fallback: string): string {
 }
 
 export function SettingsForm() {
-  const { me, firstName, businessName } = useAuth();
+  const { me, firstName, businessName, refresh } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
+  // null until the owner types: the field then follows the saved name from AuthProvider, so a
+  // background refresh never overwrites unsaved typing and no effect has to sync state.
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const bizName = draftName ?? businessName ?? "";
+  const [nameError, setNameError] = useState<string | undefined>();
+  const [savingName, setSavingName] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,6 +39,29 @@ export function SettingsForm() {
       .then(({ data }) => { if (data.user) setEmail(data.user.email ?? ""); })
       .catch(() => {});
   }, []);
+
+  async function saveBusinessName(e: React.FormEvent) {
+    e.preventDefault();
+    const name = bizName.trim();
+    if (!name) { setNameError("Enter your business name."); return; }
+    if (name.length > 120) { setNameError("Keep the name under 120 characters."); return; }
+    if (name === businessName) { toast.success("Your business name is already saved."); return; }
+    setNameError(undefined);
+    setSavingName(true);
+    try {
+      const saved = await api.updateBusiness({ name });
+      setDraftName(saved.business.name);
+      // Refresh the signed-in user so the sidebar, dashboard and greeting show the new name now.
+      refresh();
+      toast.success("Business name updated");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "We couldn't save your business name. Please try again.";
+      setNameError(msg);
+      toast.error(msg);
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   async function changeEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -161,16 +190,39 @@ export function SettingsForm() {
 
         <section className="rounded-2xl border border-line bg-surface p-5">
           <h2 className="mb-4 text-lg font-extrabold tracking-tight">Business</h2>
-          <dl className="divide-y divide-line overflow-hidden">
-            <div className="flex justify-between gap-4 py-4 first:pt-0 last:pb-0">
-              <dt className="font-semibold">Business name</dt>
-              <dd className="text-ink-soft">{businessName ?? "Not set up yet"}</dd>
+          <form onSubmit={saveBusinessName} className="space-y-4" noValidate>
+            <Field
+              label="Business name"
+              htmlFor="business-name"
+              error={nameError}
+              hint="Shown on your dashboard and across the app. You can change it whenever you like."
+            >
+              <Input
+                id="business-name"
+                name="businessName"
+                autoComplete="organization"
+                maxLength={120}
+                value={bizName}
+                onChange={(e) => { setDraftName(e.target.value); if (nameError) setNameError(undefined); }}
+                placeholder="e.g. Marvel Fabrics"
+              />
+            </Field>
+            <div className="flex justify-end">
+              <Button type="submit" size="sm" loading={savingName}>
+                {savingName ? "Saving…" : "Save business name"}
+              </Button>
             </div>
-            <div className="flex justify-between gap-4 py-4 first:pt-0 last:pb-0">
+          </form>
+          <dl className="mt-4 divide-y divide-line overflow-hidden border-t border-line">
+            <div className="flex justify-between gap-4 py-4 last:pb-0">
               <dt className="font-semibold">Currency</dt>
               <dd className="text-ink-soft">
                 {me?.business?.currency === "NGN" ? "Nigerian naira (₦)" : me?.business?.currency ?? "Nigerian naira (₦)"}
               </dd>
+            </div>
+            <div className="flex justify-between gap-4 py-4 last:pb-0">
+              <dt className="font-semibold">Business hours</dt>
+              <dd className="text-ink-soft">Greetings follow West Africa Time (Africa/Lagos)</dd>
             </div>
           </dl>
         </section>
@@ -178,7 +230,7 @@ export function SettingsForm() {
         <section>
           <h2 className="mb-1 text-lg font-extrabold tracking-tight text-red">Danger zone</h2>
           <p className="mb-4 text-sm text-slate">
-            Permanently delete your account and all of your business data. This can't be undone.
+            Permanently delete your account and all of your business data. This can&apos;t be undone.
           </p>
           <Button variant="dangerOutline" size="sm" onClick={() => setDeleteDialogOpen(true)}>
             Delete account

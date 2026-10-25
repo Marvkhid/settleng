@@ -1,6 +1,7 @@
 import type {
   Categories, CustomerDetail, CustomerSummary, Dashboard, InvoiceStatus, InvoiceView, Method, Page, SaleMethod, Series,
   TransactionView, Me, CsvPreview, ColumnMapping, ImportDetail, ImportSummary,
+  Performance, PerformancePeriod, ReportSummary, ExportType,
 } from "@/types/api";
 import { getApiUrl } from "./env";
 import { supabase } from "./supabase/client";
@@ -23,12 +24,22 @@ async function accessToken(): Promise<string | undefined> {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/**
+ * A request may never hang forever. A sleeping or broken API host would otherwise leave a save
+ * button spinning indefinitely, which is exactly what an unreachable server looked like before.
+ */
+const REQUEST_TIMEOUT_MS = 45_000;
+
+/** One authenticated request. Every caller - JSON, file upload, CSV download - goes through here. */
+async function send(path: string, init?: RequestInit): Promise<Response> {
   let res: Response;
   const token = await accessToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     res = await fetch(`${getApiUrl()}/api${path}`, {
       ...init,
+      signal: init?.signal ?? controller.signal,
       headers: {
         ...(init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -37,7 +48,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(0, "We can't reach the server right now. Check your connection and try again.");
+    throw new ApiError(
+      0,
+      controller.signal.aborted
+        ? "The server is taking too long to answer. It may be starting up - please try again in a moment."
+        : "We can't reach the server right now. Check your connection and try again.",
+    );
+  } finally {
+    clearTimeout(timer);
   }
   if (!res.ok) {
     let message = "Something went wrong. Please try again.";
@@ -49,6 +67,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch { /* keep default message */ }
     throw new ApiError(res.status, message, details);
   }
+  return res;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await send(path, init);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -70,10 +93,21 @@ export interface InvoiceInput {
 export const api = {
   me: () => request<Me>("/auth/me"),
   bootstrap: (b: { fullName: string; businessName: string }) => request<Me>("/auth/bootstrap", json("POST", b)),
+  updateBusiness: (b: { name: string }) =>
+    request<{ business: { id: string; name: string; currency: string } }>("/auth/business", json("PATCH", b)),
   updateProfile: (b: { email?: string; password?: string }) => request<{ email?: string; passwordChanged?: boolean }>("/auth/me", json("PATCH", b)),
   deleteAccount: () => request<void>("/auth/account", { method: "DELETE" }),
   dashboard: () => request<Dashboard>("/dashboard"),
   series: (period: "7d" | "30d" | "90d") => request<Series>(`/reports/timeseries?period=${period}`),
+  performance: (period: PerformancePeriod) => request<Performance>(`/reports/performance?period=${period}`),
+  reportSummary: (from: string, to: string) => request<ReportSummary>(`/reports/summary?from=${from}&to=${to}`),
+  /** CSV downloads need the Bearer token too, so they cannot be a plain <a href>. */
+  exportCsv: async (type: ExportType, from: string, to: string): Promise<{ blob: Blob; filename: string }> => {
+    const res = await send(`/reports/export?type=${type}&from=${from}&to=${to}`);
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `${type}.csv`;
+    return { blob: await res.blob(), filename };
+  },
 
   recordSale: (b: { amount: string; paymentMethod: SaleMethod; customerId?: string; description?: string; date?: string }) =>
     request<{ kind: "transaction" | "credit_invoice" }>("/sales", json("POST", b)),

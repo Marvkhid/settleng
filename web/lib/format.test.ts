@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, formatNaira, friendlyDate, greeting, todayIso } from "./format";
+import { addDays, formatNaira, friendlyDate, greeting, greetingFor, hourInZone, monthShort, todayIso } from "./format";
 
 describe("formatNaira", () => {
   it("formats whole amounts without decimals and groups thousands", () => {
@@ -37,5 +37,37 @@ describe("dates", () => {
     expect(greeting(new Date("2026-10-04T07:00:00Z"))).toBe("Good morning"); // 08:00 Lagos
     expect(greeting(new Date("2026-10-04T13:00:00Z"))).toBe("Good afternoon");
     expect(greeting(new Date("2026-10-04T19:00:00Z"))).toBe("Good evening");
+  });
+
+  it("greets by Lagos time even when the device is in another timezone", () => {
+    // 04:00 and 20:00 UTC are 05:00 and 21:00 in Lagos (UTC+1, no daylight saving).
+    expect(hourInZone(new Date("2026-10-04T04:00:00Z"))).toBe(5);
+    expect(hourInZone(new Date("2026-10-04T20:00:00Z"))).toBe(21);
+    expect(hourInZone(new Date("2026-10-04T23:30:00Z"))).toBe(0); // midnight, not 24
+  });
+
+  it("changes greeting exactly at the boundaries", () => {
+    const at = (lagosHour: number, lagosMinute = 0) =>
+      new Date(Date.UTC(2026, 9, 5, lagosHour - 1, lagosMinute));
+    expect(greeting(at(4, 59))).toBe("Good evening"); // 04:59 overnight
+    expect(greeting(at(5, 0))).toBe("Good morning"); // 05:00
+    expect(greeting(at(11, 59))).toBe("Good morning");
+    expect(greeting(at(12, 0))).toBe("Good afternoon");
+    expect(greeting(at(16, 59))).toBe("Good afternoon");
+    expect(greeting(at(17, 0))).toBe("Good evening");
+    expect(greeting(at(23, 59))).toBe("Good evening");
+  });
+
+  it("uses the saved first name, and stays neutral without one", () => {
+    const morning = new Date("2026-10-04T07:00:00Z"); // 08:00 Lagos
+    expect(greetingFor("Marvel", morning)).toBe("Good morning, Marvel");
+    expect(greetingFor(null, morning)).toBe("Good morning");
+    expect(greetingFor("   ", morning)).toBe("Good morning"); // a blank name is no name
+    expect(greetingFor(undefined, morning)).toBe("Good morning");
+  });
+
+  it("formats short month labels for the monthly chart buckets", () => {
+    expect(monthShort("2026-01-01")).toBe("Jan");
+    expect(monthShort("2026-10-01")).toBe("Oct");
   });
 });

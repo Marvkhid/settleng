@@ -19,6 +19,53 @@ export interface Range {
   to: string;
 }
 
+export type PerformancePeriod = '7d' | '30d' | '90d' | '6m' | '1y';
+export type PerformanceGranularity = 'day' | 'week' | 'month';
+export type TrendDirection = 'UP' | 'DOWN' | 'FLAT';
+
+const PERFORMANCE_SPECS: Record<
+  PerformancePeriod,
+  { days?: number; granularity: PerformanceGranularity; previousLabel: string }
+> = {
+  '7d': {
+    days: 7,
+    granularity: 'day',
+    previousLabel: 'the previous 7 days',
+  },
+  '30d': {
+    days: 30,
+    granularity: 'day',
+    previousLabel: 'the previous 30 days',
+  },
+  '90d': {
+    days: 90,
+    granularity: 'week',
+    previousLabel: 'the previous 3 months',
+  },
+  '6m': {
+    days: 180,
+    granularity: 'week',
+    previousLabel: 'the previous 6 months',
+  },
+  '1y': {
+    granularity: 'month',
+    previousLabel: 'the period before this one',
+  },
+};
+
+/** Whole days covered by [from, to], inclusive. */
+const daysBetween = (from: string, to: string): number =>
+  Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+      86_400_000,
+  ) + 1;
+
+/** ₦25,000.00 for insight sentences (the JSON fields stay plain "25000.00" strings). */
+const naira = (v: Decimal): string => {
+  const [whole, cents] = money(v).split('.');
+  return `₦${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${cents}`;
+};
+
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -205,6 +252,250 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Sales and expenses per day for a range.
+   *
+   * The definitions are the same ones summary() and timeseries() use, so the chart always
+   * reconciles with the Reports page: sales = recorded sales + invoice totals on their issue date
+   * (drafts and void invoices excluded), expenses = every expense record. Invoice payments are not
+   * added again (they are money in against an invoice that already counted as a sale), and imported
+   * bank credits are not treated as sales - they are money in, exactly as on the Reports page.
+   */
+  private async dailyTotals(
+    range: Range,
+  ): Promise<Map<string, { sales: Decimal; expenses: Decimal }>> {
+    const [invSales, txns] = await Promise.all([
+      this.invoiceSalesByDay(range),
+      this.txnsByDay(range),
+    ]);
+    const map = new Map<string, { sales: Decimal; expenses: Decimal }>();
+    const at = (d: string) => {
+      let e = map.get(d);
+      if (!e) {
+        e = { sales: new Decimal(0), expenses: new Decimal(0) };
+        map.set(d, e);
+      }
+      return e;
+    };
+    for (const [d, v] of invSales) at(d).sales = at(d).sales.plus(v);
+    for (const t of txns) {
+      if (t.type === 'INCOME' && t.source === 'MANUAL')
+        at(t.date).sales = at(t.date).sales.plus(t.amount);
+      if (t.type === 'EXPENSE')
+        at(t.date).expenses = at(t.date).expenses.plus(t.amount);
+    }
+    return map;
+  }
+
+  private bucketRanges(
+    from: string,
+    to: string,
+    granularity: PerformanceGranularity,
+  ): Range[] {
+    if (granularity === 'day')
+      return Array.from({ length: daysBetween(from, to) }, (_, i) => {
+        const d = addDaysIso(from, i);
+        return { from: d, to: d };
+      });
+    if (granularity === 'week') {
+      const out: Range[] = [];
+      for (let start = from; start <= to; start = addDaysIso(start, 7)) {
+        const end = addDaysIso(start, 6);
+        out.push({ from: start, to: end > to ? to : end });
+      }
+      return out;
+    }
+    const out: Range[] = [];
+    let monthStart = `${from.slice(0, 7)}-01`;
+    while (monthStart <= to) {
+      const [y, m] = monthStart.split('-').map(Number);
+      const nextMonth =
+        m === 12
+          ? `${y + 1}-01-01`
+          : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+      const monthEnd = addDaysIso(nextMonth, -1);
+      out.push({
+        from: monthStart < from ? from : monthStart,
+        to: monthEnd > to ? to : monthEnd,
+      });
+      monthStart = nextMonth;
+    }
+    return out;
+  }
+
+  /**
+   * The Home dashboard chart: real, persisted revenue, expenses and profit over the selected
+   * period, compared with the immediately preceding period of the same length. Every money value
+   * is calculated with decimal.js on the server, so no floating point touches a total.
+   */
+  async performance(period: PerformancePeriod = '30d') {
+    const spec = PERFORMANCE_SPECS[period];
+    const to = todayInLagos();
+    const from =
+      period === '1y'
+        ? `${to.slice(0, 4)}-01-01`
+        : addDaysIso(to, -(spec.days! - 1));
+    const length = daysBetween(from, to);
+    const previousTo = addDaysIso(from, -1);
+    const previousFrom = addDaysIso(previousTo, -(length - 1));
+
+    const [current, previous, business] = await Promise.all([
+      this.dailyTotals({ from, to }),
+      this.dailyTotals({ from: previousFrom, to: previousTo }),
+      this.prisma.business.findUnique({
+        where: { id: requireBusinessId() },
+        select: { currency: true },
+      }),
+    ]);
+
+    const total = (
+      map: Map<string, { sales: Decimal; expenses: Decimal }>,
+      key: 'sales' | 'expenses',
+    ) => [...map.values()].reduce((s, v) => s.plus(v[key]), new Decimal(0));
+
+    const sales = total(current, 'sales');
+    const expenses = total(current, 'expenses');
+    const profit = sales.minus(expenses);
+    const prevSales = total(previous, 'sales');
+    const prevExpenses = total(previous, 'expenses');
+    const prevProfit = prevSales.minus(prevExpenses);
+
+    const points = this.bucketRanges(from, to, spec.granularity).map((b) => {
+      let bSales = new Decimal(0);
+      let bExpenses = new Decimal(0);
+      for (let d = b.from; d <= b.to; d = addDaysIso(d, 1)) {
+        const t = current.get(d);
+        if (!t) continue;
+        bSales = bSales.plus(t.sales);
+        bExpenses = bExpenses.plus(t.expenses);
+      }
+      return {
+        start: b.from,
+        end: b.to,
+        sales: money(bSales),
+        expenses: money(bExpenses),
+        profit: money(bSales.minus(bExpenses)),
+      };
+    });
+
+    const compare = (cur: Decimal, prev: Decimal) => {
+      const diff = cur.minus(prev);
+      return {
+        current: money(cur),
+        previous: money(prev),
+        changePct: prev.isZero()
+          ? null
+          : Number(diff.div(prev.abs()).times(100).toFixed(1)),
+        direction: diff.gt(0) ? 'UP' : diff.lt(0) ? 'DOWN' : 'FLAT',
+      };
+    };
+
+    const salesCmp = compare(sales, prevSales);
+    const expensesCmp = compare(expenses, prevExpenses);
+    const profitCmp = compare(profit, prevProfit);
+
+    const hasData = !sales.isZero() || !expenses.isZero();
+    // A comparison needs something to compare with. An empty previous period cannot produce a
+    // percentage, and calling that "0% change" would be a false statement.
+    const enoughHistory = !prevSales.isZero() || !prevExpenses.isZero();
+    const pct = (c: { changePct: number | null }) =>
+      c.changePct === null ? null : `${Math.abs(c.changePct).toFixed(1)}%`;
+
+    const insights: string[] = [];
+    if (!hasData) {
+      insights.push(
+        'No sales or expenses recorded in this period yet. Record a sale or an expense and the chart will fill in.',
+      );
+    } else if (!enoughHistory) {
+      insights.push(
+        `Not enough earlier records to compare this period with ${spec.previousLabel}.`,
+      );
+      insights.push(
+        profit.gte(0)
+          ? `So far: ${naira(sales)} in sales, ${naira(expenses)} in expenses, and ${naira(profit)} profit.`
+          : `So far: ${naira(sales)} in sales and ${naira(expenses)} in expenses - a loss of ${naira(profit.abs())}.`,
+      );
+    } else {
+      if (salesCmp.direction === 'UP' && pct(salesCmp))
+        insights.push(
+          `Sales increased by ${pct(salesCmp)} compared with ${spec.previousLabel}.`,
+        );
+      else if (salesCmp.direction === 'DOWN' && pct(salesCmp))
+        insights.push(
+          `Sales fell by ${pct(salesCmp)} compared with ${spec.previousLabel}.`,
+        );
+      else if (salesCmp.direction === 'FLAT')
+        insights.push(
+          `Sales were unchanged compared with ${spec.previousLabel}.`,
+        );
+
+      if (
+        expensesCmp.direction === 'UP' &&
+        expensesCmp.changePct !== null &&
+        (salesCmp.changePct === null ||
+          expensesCmp.changePct > salesCmp.changePct)
+      )
+        insights.push(
+          `Expenses grew faster than sales during this period (up ${pct(expensesCmp)}).`,
+        );
+      else if (expensesCmp.direction === 'UP' && pct(expensesCmp))
+        insights.push(
+          `Expenses rose by ${pct(expensesCmp)} compared with ${spec.previousLabel}.`,
+        );
+      else if (expensesCmp.direction === 'DOWN' && pct(expensesCmp))
+        insights.push(
+          `Expenses fell by ${pct(expensesCmp)} compared with ${spec.previousLabel}.`,
+        );
+
+      if (profit.lt(0))
+        insights.push(
+          `Your business recorded a loss of ${naira(profit.abs())} during this period.`,
+        );
+      else if (profitCmp.direction === 'UP' && pct(profitCmp))
+        insights.push(
+          `Profit rose by ${pct(profitCmp)} compared with ${spec.previousLabel}, to ${naira(profit)}.`,
+        );
+      else if (profitCmp.direction === 'DOWN' && pct(profitCmp))
+        insights.push(
+          `Profit fell by ${pct(profitCmp)} compared with ${spec.previousLabel}, to ${naira(profit)}.`,
+        );
+      else if (profitCmp.direction === 'FLAT')
+        insights.push(`Profit was unchanged at ${naira(profit)}.`);
+    }
+
+    return {
+      period,
+      granularity: spec.granularity,
+      currency: business?.currency ?? 'NGN',
+      from,
+      to,
+      previousFrom,
+      previousTo,
+      previousLabel: spec.previousLabel,
+      points,
+      totals: {
+        sales: money(sales),
+        expenses: money(expenses),
+        profit: money(profit),
+      },
+      comparison: {
+        sales: salesCmp,
+        expenses: expensesCmp,
+        profit: profitCmp,
+      },
+      trend: !enoughHistory
+        ? ('UNKNOWN' as const)
+        : profitCmp.direction === 'UP'
+          ? ('IMPROVING' as const)
+          : profitCmp.direction === 'DOWN'
+            ? ('DECLINING' as const)
+            : ('STABLE' as const),
+      hasData,
+      enoughHistory,
+      insights,
+    };
+  }
+
   async timeseries(period: '7d' | '30d' | '90d') {
     const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
     const to = todayInLagos();
@@ -235,7 +526,9 @@ export class ReportsService {
 
   async dashboard() {
     const today = todayInLagos();
-    const [summary, owing, recent, series] = await Promise.all([
+    // The performance chart loads from /api/reports/performance on its own, so a slow chart never
+    // delays the figures above it.
+    const [summary, owing, recent] = await Promise.all([
       this.summary({ from: today, to: today }),
       this.customersOwing(),
       this.prisma.transaction.findMany({
@@ -247,7 +540,6 @@ export class ReportsService {
           invoicePayment: { select: { invoiceId: true } },
         },
       }),
-      this.timeseries('7d'),
     ]);
     return {
       today,
@@ -273,7 +565,6 @@ export class ReportsService {
         customerName: t.customer?.name ?? null,
         invoiceId: t.invoicePayment?.invoiceId ?? null,
       })),
-      chart: series,
     };
   }
 

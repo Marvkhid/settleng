@@ -76,14 +76,14 @@ The migrations in `api/prisma/migrations` are the single source of truth for the
 | Area | Endpoints |
 |------|-----------|
 | Health (public) | `GET /api/health`, `GET /api/health/ready` |
-| Auth | `GET /api/auth/me`, `POST /api/auth/bootstrap` |
+| Auth | `GET /api/auth/me`, `POST /api/auth/bootstrap`, `PATCH /api/auth/business` (business name), `DELETE /api/auth/account` |
 | Dashboard | `GET /api/dashboard` |
 | Quick actions | `POST /api/sales`, `POST /api/expenses` |
 | Customers | `GET/POST /api/customers`, `GET/PATCH /api/customers/:id`, `POST /api/customers/:id/archive`, `.../restore`, `POST /api/customers/:id/payments` ("Customer paid me") |
 | Invoices | `GET/POST /api/invoices`, `GET/PATCH/DELETE /api/invoices/:id`, `POST .../issue`, `.../void` |
 | Payments | `GET/POST /api/invoices/:id/payments` |
 | Transactions | `GET/POST /api/transactions`, `GET/PATCH/DELETE /api/transactions/:id`, `GET /api/transactions/categories` |
-| Reports | `GET /api/reports/summary`, `/timeseries`, `/customers-owing`, `/export?type=transactions|invoices|customers-owing` |
+| Reports | `GET /api/reports/summary`, `/timeseries`, `/performance?period=7d|30d|90d|6m|1y`, `/customers-owing`, `/export?type=transactions|invoices|customers-owing` |
 | Reconciliation | `GET /api/reconciliation/template`, `POST /preview`, `POST /imports`, `GET /imports`, `GET /imports/:id`, `POST /rows/:id/confirm`, `POST /rows/:id/reject` |
 | Audit | `GET /api/audit` |
 
@@ -93,8 +93,9 @@ Money values are strings with two decimals (for example `"25000.00"`). The backe
 
 ```bash
 npm run lint
-npm test              # unit tests
-npm run test:e2e      # wiring, database stubbed
+npm test              # API unit tests
+npm test --prefix web # web unit and DOM tests (vitest)
+npm run test:e2e      # API wiring, database stubbed
 npm run test:int      # full API on a throwaway real Postgres (starts and stops itself)
 npm run build
 ```

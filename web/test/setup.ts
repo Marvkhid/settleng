@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { vi } from "vitest";
+import { vi, type Mock } from "vitest";
 
 // ---- Env stubs for browser-only modules that read env at runtime. ----
 // Auth pages read NEXT_PUBLIC_SUPABASE_URL/ANON_KEY and NEXT_PUBLIC_API_URL. In unit tests we
@@ -58,8 +58,8 @@ const g = authGlobalThis();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface TestSupabase {
   auth: {
-    signInWithPassword: typeof vi.fn;
-    signUp: typeof vi.fn;
+    signInWithPassword: Mock;
+    signUp: Mock;
     resetPasswordForEmail: (email: string, opts: { redirectTo: string }) => Promise<{ error: { code: string; message: string } | null }>;
     updateUser: (opts: { password: string }) => Promise<{ error: { message: string } | null }>;
     getSession: () => Promise<{ data: { session: { access_token: string; user: { id: string; email: string } | null } | null }; error: null }>;
@@ -74,10 +74,10 @@ export function testSupabase(): TestSupabase {
       auth: {
         signInWithPassword: vi.fn(),
         signUp: vi.fn(),
-        resetPasswordForEmail: vi.fn<[string, { redirectTo: string }], Promise<{ error: { code: string; message: string } | null }>>().mockResolvedValue({ error: null }),
-        updateUser: vi.fn<[{ password: string }, Promise<{ error: { message: string } | null }>]>().mockResolvedValue({ error: { message: "not configured" } }),
-        getSession: vi.fn<[], Promise<{ data: { session: { access_token: string; user: { id: string; email: string } | null } | null }; error: null }>>().mockResolvedValue({ data: { session: { access_token: "mock-access-token", user: { id: "u1", email: "a@b.c" } } }, error: null }),
-        signOut: vi.fn<[], Promise<{ error: { message: string } | null }>>().mockResolvedValue({ error: null }),
+        resetPasswordForEmail: vi.fn<(email: string, opts: { redirectTo: string }) => Promise<{ error: { code: string; message: string } | null }>>().mockResolvedValue({ error: null }),
+        updateUser: vi.fn<(opts: { password: string }) => Promise<{ error: { message: string } | null }>>().mockResolvedValue({ error: { message: "not configured" } }),
+        getSession: vi.fn<() => Promise<{ data: { session: { access_token: string; user: { id: string; email: string } | null } | null }; error: null }>>().mockResolvedValue({ data: { session: { access_token: "mock-access-token", user: { id: "u1", email: "a@b.c" } } }, error: null }),
+        signOut: vi.fn<() => Promise<{ error: { message: string } | null }>>().mockResolvedValue({ error: null }),
       },
     };
   }
@@ -89,8 +89,8 @@ export function setSupabaseAuth(auth: TestSupabase["auth"]) {
     auth: {
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
-      resetPasswordForEmail: async (_email, _opts) => ({ error: null }),
-      updateUser: async (_opts) => ({ error: { message: "not configured" } }),
+      resetPasswordForEmail: async (_email: string, _opts: { redirectTo: string }) => ({ error: null }),
+      updateUser: async (_opts: { password: string }) => ({ error: { message: "not configured" } }),
       getSession: async () => ({ data: { session: { access_token: "mock-access-token", user: { id: "u1", email: "a@b.c" } } }, error: null }),
       signOut: async () => ({ error: null }),
     },
@@ -109,10 +109,10 @@ export function resetSupabaseAuth() {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface TestApiMock {
-  me: typeof vi.fn;
-  bootstrap: typeof vi.fn;
-  updateProfile: typeof vi.fn;
-  deleteAccount: typeof vi.fn;
+  me: Mock;
+  bootstrap: Mock;
+  updateProfile: Mock;
+  deleteAccount: Mock;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,7 +144,7 @@ export function setSearchParams(search: string) {
 }
 
 export function clearRouterCalls() {
-  for (const k of Object.keys(mockRouter)) {
-    if (typeof mockRouter[k] === "function") mockRouter[k].mockClear();
+  for (const value of Object.values(mockRouter)) {
+    if (typeof value === "function") (value as Mock).mockClear();
   }
 }

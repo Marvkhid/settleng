@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { initialTheme, setTheme, THEME_KEY, applyTheme, useTheme } from "./theme";
-import { vi } from "vitest";
 
 // The store is module-local singletons, so tests share state. Reset between tests.
 

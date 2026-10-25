@@ -22,8 +22,8 @@ export function testSupabase() {
       auth: {
         signInWithPassword: vi.fn(),
         signUp: vi.fn(),
-        resetPasswordForEmail: vi.fn<[string, { redirectTo: string }], Promise<{ error: { code: string; message: string } | null }>>().mockResolvedValue({ error: null }),
-        updateUser: vi.fn<[{ password: string }, Promise<{ error: { message: string } | null }>]>().mockResolvedValue({ error: { message: "not configured" } }),
+        resetPasswordForEmail: vi.fn<(email: string, opts: { redirectTo: string }) => Promise<{ error: { code: string; message: string } | null }>>().mockResolvedValue({ error: null }),
+        updateUser: vi.fn<(opts: { password: string }) => Promise<{ error: { message: string } | null }>>().mockResolvedValue({ error: { message: "not configured" } }),
         getSession: async () => ({ data: { session: { access_token: "mock-access-token", user: { id: "u1", email: "a@b.c" } } }, error: null }),
         signOut: async () => ({ error: null as { message: string } | null }),
       },

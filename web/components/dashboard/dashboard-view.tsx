@@ -10,7 +10,7 @@ import { api } from "@/lib/api-client";
 import { formatNaira, friendlyDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ActivityItem, Dashboard } from "@/types/api";
-import { SalesChart } from "./sales-chart";
+import { PerformanceChart } from "./performance-chart";
 
 function Hero({ d }: { d: Dashboard }) {
   const strip = [
@@ -128,6 +128,7 @@ function DashboardSkeleton() {
     <div className="space-y-6" aria-busy="true" aria-label="Loading your dashboard">
       <Skeleton className="h-56 w-full rounded-3xl" />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
+      <Skeleton className="h-96 w-full" />
       <div className="grid gap-6 lg:grid-cols-2"><Skeleton className="h-80" /><Skeleton className="h-80" /></div>
     </div>
   );
@@ -149,11 +150,11 @@ export function DashboardView() {
         <div className="space-y-6">
           <Hero d={q.data} />
           <QuickActions />
+          <PerformanceChart />
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <Owing d={q.data} />
-            <SalesChart initial={q.data.chart} />
+            <Activity d={q.data} />
           </div>
-          <Activity d={q.data} />
         </div>
       )}
     </div>

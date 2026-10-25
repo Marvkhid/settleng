@@ -1,33 +1,19 @@
 "use client";
 import { useState } from "react";
 import { Download } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/shell/page-header";
 import { ErrorState, Skeleton } from "@/components/ui/states";
 import { Input } from "@/components/ui/field";
 import { useQuery } from "@/hooks/use-query";
-import { getApiUrl } from "@/lib/env";
+import { api, ApiError } from "@/lib/api-client";
 import { formatNaira, addDays, todayIso } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-interface Summary {
-  range: { from: string; to: string };
-  sales: { total: string; recorded: string; onInvoices: string }; expenses: { total: string };
-  moneyIn: string; moneyOut: string; netRecordedMovement: string;
-  customersOwing: { total: string; customerCount: number; invoiceCount: number };
-  overdueInvoices: { count: number; total: string };
-  expensesByCategory: { category: string; total: string; count: number }[];
-  incomeByCategory: { category: string; total: string; count: number }[];
-}
-
-async function fetchSummary(from: string, to: string): Promise<Summary> {
-  const res = await fetch(`${getApiUrl()}/api/reports/summary?from=${from}&to=${to}`, { cache: "no-store" });
-  if (!res.ok) throw Object.assign(new Error("We couldn't load the report."), { status: res.status });
-  return (await res.json()) as Summary;
-}
+import type { ExportType, ReportSummary } from "@/types/api";
 
 const PRESETS = [["Last 7 days", 6], ["Last 30 days", 29], ["Last 90 days", 89]] as const;
 
-function Bars({ title, rows }: { title: string; rows: Summary["expensesByCategory"] }) {
+function Bars({ title, rows }: { title: string; rows: ReportSummary["expensesByCategory"] }) {
   const max = Math.max(...rows.map((r) => Number(r.total)), 1);
   return (
     <section aria-label={title} className="rounded-2xl border border-line bg-surface p-4 md:p-6">
@@ -49,9 +35,35 @@ function Bars({ title, rows }: { title: string; rows: Summary["expensesByCategor
 export function ReportsView() {
   const [from, setFrom] = useState(addDays(todayIso(), -29));
   const [to, setTo] = useState(todayIso());
+  const [downloading, setDownloading] = useState<ExportType | null>(null);
   const valid = from <= to;
-  const q = useQuery(() => (valid ? fetchSummary(from, to) : Promise.reject(new Error("The start date must be before the end date."))), [from, to]);
-  const exportUrl = (type: string) => `${getApiUrl()}/api/reports/export?type=${type}&from=${from}&to=${to}`;
+  // Every API route needs the signed-in user's token, so this goes through the API client
+  // (a plain fetch here would always be answered with 401).
+  const q = useQuery(
+    () => (valid ? api.reportSummary(from, to) : Promise.reject(new ApiError(400, "The start date must be before the end date."))),
+    [from, to],
+  );
+
+  async function download(type: ExportType) {
+    setDownloading(type);
+    try {
+      const { blob, filename } = await api.exportCsv(type, from, to);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Give the browser a moment to start the download before the blob is released.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "We couldn't download that file. Please try again.");
+    } finally {
+      setDownloading(null);
+    }
+  }
+
   const s = q.data;
   const rows: [string, string, string?][] = s ? [
     ["Sales", s.sales.total, `${formatNaira(s.sales.recorded)} recorded + ${formatNaira(s.sales.onInvoices)} on invoices`],
@@ -89,8 +101,11 @@ export function ReportsView() {
           <section aria-labelledby="dl-h" className="rounded-2xl border border-line bg-surface p-4 md:p-6">
             <h2 id="dl-h" className="mb-3 text-xl font-bold">Download</h2>
             <div className="flex flex-wrap gap-3">
-              {[["transactions", "All records"], ["invoices", "Invoices"], ["customers-owing", "Who owes me"]].map(([t, label]) => (
-                <a key={t} href={exportUrl(t)} download className="inline-flex h-12 items-center gap-2 rounded-xl border border-line bg-surface px-5 font-semibold hover:bg-sunken"><Download className="size-5" aria-hidden /> {label} (CSV)</a>
+              {([["transactions", "All records"], ["invoices", "Invoices"], ["customers-owing", "Who owes me"]] as const).map(([t, label]) => (
+                <button key={t} type="button" onClick={() => void download(t)} disabled={downloading !== null}
+                  className="inline-flex h-12 items-center gap-2 rounded-xl border border-line bg-surface px-5 font-semibold hover:bg-sunken disabled:opacity-60">
+                  <Download className="size-5" aria-hidden /> {downloading === t ? "Preparing…" : `${label} (CSV)`}
+                </button>
               ))}
             </div>
           </section>

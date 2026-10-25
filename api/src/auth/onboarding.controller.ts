@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  NotFoundException,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,6 +26,13 @@ class BootstrapDto {
   @IsNotEmpty({ message: 'Please enter your business name.' })
   @MaxLength(120)
   businessName!: string;
+}
+
+class UpdateBusinessDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Please enter your business name.' })
+  @MaxLength(120)
+  name!: string;
 }
 
 /**
@@ -70,6 +87,39 @@ export class AuthController {
     return {
       userId,
       fullName,
+      business: {
+        id: business.id,
+        name: business.name,
+        currency: business.currency,
+      },
+    };
+  }
+
+  /**
+   * Updates the signed-in user's business profile. The business is found by the verified owner id,
+   * never by an id sent from the browser, so one user can never rename another user's business.
+   */
+  @Patch('business')
+  @ApiOkResponse({ description: "The signed-in user's updated business" })
+  async updateBusiness(
+    @UserId() userId: string,
+    @Body() dto: UpdateBusinessDto,
+  ) {
+    const name = dto.name.trim();
+    if (!name)
+      throw new BadRequestException('Please enter your business name.');
+    const { count } = await this.prisma.business.updateMany({
+      where: { ownerId: userId },
+      data: { name },
+    });
+    if (count === 0)
+      throw new NotFoundException(
+        'We could not find your business. Finish setting it up first.',
+      );
+    const business = await this.prisma.business.findUniqueOrThrow({
+      where: { ownerId: userId },
+    });
+    return {
       business: {
         id: business.id,
         name: business.name,

@@ -17,8 +17,44 @@ export interface Dashboard {
   today: string; salesToday: string; expensesToday: string; moneyIn: string; moneyOut: string;
   customersOwing: { total: string; customerCount: number; invoiceCount: number };
   overdueInvoices: { count: string | number; total: string };
-  topDebtors: Debtor[]; recentActivity: ActivityItem[]; chart: Series;
+  topDebtors: Debtor[]; recentActivity: ActivityItem[];
 }
+
+/* ---- Business performance chart (GET /api/reports/performance) ---- */
+export type PerformancePeriod = "7d" | "30d" | "90d" | "6m" | "1y";
+export type TrendDirection = "UP" | "DOWN" | "FLAT";
+export interface PerformancePoint {
+  start: string; end: string; sales: string; expenses: string; profit: string;
+}
+export interface MetricComparison {
+  current: string; previous: string; changePct: number | null; direction: TrendDirection;
+}
+export interface Performance {
+  period: PerformancePeriod;
+  granularity: "day" | "week" | "month";
+  currency: string;
+  from: string; to: string; previousFrom: string; previousTo: string; previousLabel: string;
+  points: PerformancePoint[];
+  totals: { sales: string; expenses: string; profit: string };
+  comparison: { sales: MetricComparison; expenses: MetricComparison; profit: MetricComparison };
+  trend: "IMPROVING" | "DECLINING" | "STABLE" | "UNKNOWN";
+  hasData: boolean;
+  enoughHistory: boolean;
+  insights: string[];
+}
+
+/** GET /api/reports/summary */
+export interface ReportSummary {
+  range: { from: string; to: string };
+  sales: { total: string; recorded: string; onInvoices: string };
+  expenses: { total: string };
+  moneyIn: string; moneyOut: string; netRecordedMovement: string;
+  customersOwing: { total: string; customerCount: number; invoiceCount: number };
+  overdueInvoices: { count: number; total: string };
+  expensesByCategory: { category: string; total: string; count: number }[];
+  incomeByCategory: { category: string; total: string; count: number }[];
+}
+export type ExportType = "transactions" | "invoices" | "customers-owing";
 
 /** The signed-in user plus their business (null until onboarding completes). */
 export interface Me {

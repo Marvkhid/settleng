@@ -1,7 +1,12 @@
 import { Controller, Get, Header, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { ExportQuery, RangeQuery, SeriesQuery } from './report.dto';
+import {
+  ExportQuery,
+  PerformanceQuery,
+  RangeQuery,
+  SeriesQuery,
+} from './report.dto';
 import { ReportsService } from './reports.service';
 
 @ApiTags('reports')
@@ -17,6 +22,11 @@ export class ReportsController {
   }
   @Get('reports/timeseries') series(@Query() q: SeriesQuery) {
     return this.reports.timeseries(q.period);
+  }
+  /** Business performance chart: revenue, expenses, profit and the change vs the previous period. */
+  @Get('reports/performance')
+  performance(@Query() q: PerformanceQuery) {
+    return this.reports.performance(q.period);
   }
   @Get('reports/customers-owing') owing() {
     return this.reports.customersOwing().then((o) => ({

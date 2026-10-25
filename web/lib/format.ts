@@ -33,24 +33,48 @@ export function friendlyDate(iso: string, today: string = todayIso()): string {
 }
 
 /**
- * Time of day from the visitor's own clock (so it matches what they see, computed on the client to
- * avoid a hydration mismatch). Morning 5:00–11:59, afternoon 12:00–16:59, evening 17:00 onward.
+ * The business's timezone. SettleNG's users are Nigerian small businesses, so the greeting follows
+ * Lagos time (WAT) rather than whatever timezone the visitor's device happens to be set to. A user
+ * travelling abroad still sees the greeting that matches their business day.
  */
-export function greeting(now: Date = new Date()): string {
-  const hour = now.getHours(); // local time, no timezone forced
+export const BUSINESS_TIME_ZONE = "Africa/Lagos";
+
+/** The hour (0-23) at `now` in the given timezone. */
+export function hourInZone(now: Date, timeZone: string = BUSINESS_TIME_ZONE): number {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(now),
+  );
+}
+
+/**
+ * Morning 5:00–11:59, afternoon 12:00–16:59, evening 17:00–04:59, in the business timezone.
+ */
+export function greeting(now: Date = new Date(), timeZone: string = BUSINESS_TIME_ZONE): string {
+  const hour = hourInZone(now, timeZone);
   if (hour >= 5 && hour < 12) return "Good morning";
   if (hour >= 12 && hour < 17) return "Good afternoon";
   return "Good evening";
 }
 
 /** "Good morning, Marvel" — falls back to a neutral greeting when the name isn't loaded yet. */
-export function greetingFor(name: string | null | undefined, now: Date = new Date()): string {
-  return name ? `${greeting(now)}, ${name}` : greeting(now);
+export function greetingFor(
+  name: string | null | undefined,
+  now: Date = new Date(),
+  timeZone: string = BUSINESS_TIME_ZONE,
+): string {
+  const clean = name?.trim();
+  return clean ? `${greeting(now, timeZone)}, ${clean}` : greeting(now, timeZone);
 }
 
 export function shortDay(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);
   return `${d} ${MONTHS[m - 1]}`;
+}
+
+/** "Oct" — axis label for monthly chart buckets. */
+export function monthShort(iso: string): string {
+  const [, m] = iso.split("-").map(Number);
+  return MONTHS[m - 1] ?? iso;
 }
 
 export const METHOD_LABEL: Record<string, string> = { CASH: "Cash", BANK_TRANSFER: "Bank transfer", POS: "POS", CREDIT: "Credit" };

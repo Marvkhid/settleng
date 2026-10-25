@@ -14,6 +14,13 @@ export class RangeQuery {
 export class SeriesQuery {
   @IsOptional() @IsIn(['7d', '30d', '90d']) period: '7d' | '30d' | '90d' = '7d';
 }
+export class PerformanceQuery {
+  @IsOptional()
+  @IsIn(['7d', '30d', '90d', '6m', '1y'], {
+    message: 'Choose 7d, 30d, 90d, 6m or 1y.',
+  })
+  period: '7d' | '30d' | '90d' | '6m' | '1y' = '30d';
+}
 export class ExportQuery extends RangeQuery {
   @IsIn(['transactions', 'invoices', 'customers-owing']) type!:
     'transactions' | 'invoices' | 'customers-owing';

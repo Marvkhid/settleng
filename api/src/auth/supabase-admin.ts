@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 /**
  * Minimal Supabase Admin API client. Only what we need: deleting a user's auth account. This call
@@ -10,7 +14,11 @@ export class SupabaseAdminService {
   private readonly log = new Logger(SupabaseAdminService.name);
 
   private config(): { url: string; serviceKey: string } {
-    const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '');
+    const url = (
+      process.env.SUPABASE_URL ??
+      process.env.NEXT_PUBLIC_SUPABASE_URL ??
+      ''
+    ).replace(/\/+$/, '');
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
     if (!url || !serviceKey)
       throw new ServiceUnavailableException(
@@ -27,18 +35,32 @@ export class SupabaseAdminService {
     const { url, serviceKey } = this.config();
     let res: Response;
     try {
-      res = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
-        method: 'DELETE',
-        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-      });
+      res = await fetch(
+        `${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        },
+      );
     } catch (err) {
-      this.log.error(`Supabase Admin delete request failed for ${userId}: ${String(err)}`);
-      throw new ServiceUnavailableException('We could not reach the account service. Please try again.');
+      this.log.error(
+        `Supabase Admin delete request failed for ${userId}: ${String(err)}`,
+      );
+      throw new ServiceUnavailableException(
+        'We could not reach the account service. Please try again.',
+      );
     }
     // 200/204 = deleted, 404 = already gone. Anything else is a real failure.
     if (res.status === 200 || res.status === 204 || res.status === 404) return;
     const body = await res.text().catch(() => '');
-    this.log.error(`Supabase Admin delete returned ${res.status} for ${userId}: ${body}`);
-    throw new ServiceUnavailableException('We could not delete your account. Please try again.');
+    this.log.error(
+      `Supabase Admin delete returned ${res.status} for ${userId}: ${body}`,
+    );
+    throw new ServiceUnavailableException(
+      'We could not delete your account. Please try again.',
+    );
   }
 }

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call */
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import Decimal from 'decimal.js';
@@ -46,7 +46,7 @@ beforeAll(async () => {
     // Account deletion also removes the Supabase auth user; the suite has no live project, so the
     // admin call is stubbed. Everything else (data deletion) runs for real.
     .overrideProvider(SupabaseAdminService)
-    .useValue({ deleteUser: async () => undefined })
+    .useValue({ deleteUser: () => Promise.resolve(undefined) })
     .compile();
   app = mod.createNestApplication();
   configureApp(app, ['http://localhost:3000']);
@@ -72,9 +72,6 @@ afterAll(async () => {
   await app.close();
 });
 
-const firstInvoice = async (status: string, token = tokenA) =>
-  (await as(token).get(`/invoices?status=${status}&pageSize=100`)).body
-    .items[0];
 const dashboard = (token = tokenA) => as(token).get('/dashboard');
 const newCustomer = async (name?: string, token = tokenA) =>
   (
@@ -206,18 +203,18 @@ describe('dashboard and reports share one source of truth', () => {
     expect(d.customersOwing).toEqual(s.customersOwing);
   });
 
-  it('chart today point equals sales today; ranges have the right number of days', async () => {
-    const d = (await dashboard().expect(200)).body;
-    expect(d.chart.points.at(-1).date).toBe(TODAY);
+  it('the chart series ends today and has one point per day', async () => {
     for (const [p, n] of [
       ['7d', 7],
       ['30d', 30],
       ['90d', 90],
-    ] as const)
-      expect(
-        (await as(tokenA).get(`/reports/timeseries?period=${p}`).expect(200))
-          .body.points,
-      ).toHaveLength(n);
+    ] as const) {
+      const s = (
+        await as(tokenA).get(`/reports/timeseries?period=${p}`).expect(200)
+      ).body;
+      expect(s.points).toHaveLength(n);
+      expect(s.points.at(-1).date).toBe(TODAY);
+    }
     await as(tokenA).get('/reports/timeseries?period=5y').expect(400);
   });
 
@@ -229,6 +226,304 @@ describe('dashboard and reports share one source of truth', () => {
       .get(`/reports/summary?from=2020-01-01&to=${TODAY}`)
       .expect(400);
     await as(tokenA).get('/reports/summary?from=2026-02-30').expect(400);
+  });
+});
+
+describe('business profile', () => {
+  it("renames the signed-in owner's business, persists it and reports it on /auth/me", async () => {
+    const r = await as(tokenA)
+      .patch('/auth/business', { name: '  Marvel Stores NG  ' })
+      .expect(200);
+    expect(r.body.business).toMatchObject({
+      name: 'Marvel Stores NG',
+      currency: 'NGN',
+    });
+    expect(
+      (await as(tokenA).get('/auth/me').expect(200)).body.business.name,
+    ).toBe('Marvel Stores NG');
+    const row = await prisma.business.findUniqueOrThrow({
+      where: { ownerId: OWNER_A },
+    });
+    expect(row.name).toBe('Marvel Stores NG');
+  });
+
+  it('rejects an empty or overlong name and never renames another business', async () => {
+    await as(tokenA).patch('/auth/business', { name: '' }).expect(400);
+    await as(tokenA).patch('/auth/business', { name: '   ' }).expect(400);
+    await as(tokenA)
+      .patch('/auth/business', { name: 'x'.repeat(121) })
+      .expect(400);
+
+    await as(tokenA)
+      .patch('/auth/business', { name: 'Marvel Stores' })
+      .expect(200);
+    // The browser never sends a business id: B's business is untouched by A's request.
+    expect(
+      (await as(tokenB).get('/auth/me').expect(200)).body.business.name,
+    ).toBe('Zainab Textiles');
+  });
+
+  it('requires a valid token', async () => {
+    await http().patch('/api/auth/business').send({ name: 'Nope' }).expect(401);
+  });
+});
+
+const OWNER_C = 'user-perf';
+let tokenC = '';
+
+describe('business performance chart', () => {
+  const perf = (period: string, token = tokenC) =>
+    as(token).get(`/reports/performance?period=${period}`);
+
+  beforeAll(async () => {
+    tokenC = await signTestToken({
+      sub: OWNER_C,
+      fullName: 'Chinedu Perf',
+    });
+    await as(tokenC)
+      .post('/auth/bootstrap', {
+        fullName: 'Chinedu',
+        businessName: 'Chinedu Traders',
+      })
+      .expect(200);
+    // Three known trading days, one in each comparison window.
+    await as(tokenC)
+      .post('/sales', {
+        amount: '1000',
+        paymentMethod: 'CASH',
+        date: addDaysIso(TODAY, -8),
+      })
+      .expect(201);
+    await as(tokenC)
+      .post('/expenses', {
+        amount: '400',
+        category: 'Stock',
+        date: addDaysIso(TODAY, -8),
+      })
+      .expect(201);
+    await as(tokenC)
+      .post('/sales', {
+        amount: '1500',
+        paymentMethod: 'CASH',
+        date: addDaysIso(TODAY, -2),
+      })
+      .expect(201);
+    await as(tokenC)
+      .post('/expenses', {
+        amount: '500',
+        category: 'Transport',
+        date: addDaysIso(TODAY, -2),
+      })
+      .expect(201);
+    await as(tokenC)
+      .post('/sales', {
+        amount: '2000',
+        paymentMethod: 'CASH',
+        date: addDaysIso(TODAY, -40),
+      })
+      .expect(201);
+    await as(tokenC)
+      .post('/expenses', {
+        amount: '1000',
+        category: 'Rent',
+        date: addDaysIso(TODAY, -40),
+      })
+      .expect(201);
+  });
+
+  it('7 days: daily buckets, exact totals and a real percentage change', async () => {
+    const p = (await perf('7d').expect(200)).body;
+    expect(p).toMatchObject({
+      period: '7d',
+      granularity: 'day',
+      currency: 'NGN',
+      to: TODAY,
+      from: addDaysIso(TODAY, -6),
+      previousTo: addDaysIso(TODAY, -7),
+      previousFrom: addDaysIso(TODAY, -13),
+      previousLabel: 'the previous 7 days',
+      hasData: true,
+      enoughHistory: true,
+      trend: 'IMPROVING',
+    });
+    expect(p.points).toHaveLength(7);
+    expect(p.points.at(-1)).toMatchObject({ start: TODAY, end: TODAY });
+    expect(p.totals).toEqual({
+      sales: '1500.00',
+      expenses: '500.00',
+      profit: '1000.00',
+    });
+    expect(p.comparison.sales).toMatchObject({
+      current: '1500.00',
+      previous: '1000.00',
+      changePct: 50,
+      direction: 'UP',
+    });
+    expect(p.comparison.expenses.changePct).toBe(25);
+    expect(p.comparison.profit.changePct).toBe(66.7);
+    expect(p.insights.join(' ')).toMatch(/Sales increased by 50\.0%/);
+    expect(p.insights.join(' ')).not.toMatch(/grew faster/);
+  });
+
+  it('30 days: compares with the previous 30 days, including falling expenses', async () => {
+    const p = (await perf('30d').expect(200)).body;
+    expect(p.points).toHaveLength(30);
+    expect(p.totals).toEqual({
+      sales: '2500.00',
+      expenses: '900.00',
+      profit: '1600.00',
+    });
+    expect(p.comparison.sales.changePct).toBe(25);
+    expect(p.comparison.expenses.changePct).toBe(-10);
+    expect(p.comparison.expenses.direction).toBe('DOWN');
+    expect(p.comparison.profit.changePct).toBe(60);
+    expect(p.trend).toBe('IMPROVING');
+  });
+
+  it('buckets sum exactly to the totals (no floating point drift)', async () => {
+    const p = (await perf('30d').expect(200)).body;
+    const sum = p.points.reduce(
+      (
+        acc: { sales: Decimal; expenses: Decimal; profit: Decimal },
+        x: any,
+      ) => ({
+        sales: acc.sales.plus(x.sales),
+        expenses: acc.expenses.plus(x.expenses),
+        profit: acc.profit.plus(x.profit),
+      }),
+      {
+        sales: new Decimal(0),
+        expenses: new Decimal(0),
+        profit: new Decimal(0),
+      },
+    );
+    expect(sum.sales.toFixed(2)).toBe(p.totals.sales);
+    expect(sum.expenses.toFixed(2)).toBe(p.totals.expenses);
+    expect(sum.profit.toFixed(2)).toBe(p.totals.profit);
+  });
+
+  it('reconciles with the Reports page for the same dates', async () => {
+    const p = (await perf('30d').expect(200)).body;
+    const s = (
+      await as(tokenC)
+        .get(`/reports/summary?from=${p.from}&to=${p.to}`)
+        .expect(200)
+    ).body;
+    expect(p.totals.sales).toBe(s.sales.total);
+    expect(p.totals.expenses).toBe(s.expenses.total);
+  });
+
+  it('aggregates weekly and monthly for longer periods', async () => {
+    const p90 = (await perf('90d').expect(200)).body;
+    expect(p90.granularity).toBe('week');
+    expect(p90.points).toHaveLength(13);
+    expect(p90.points.at(-1).end).toBe(TODAY);
+
+    const p6m = (await perf('6m').expect(200)).body;
+    expect(p6m.granularity).toBe('week');
+    expect(p6m.points).toHaveLength(26);
+
+    const p1y = (await perf('1y').expect(200)).body;
+    expect(p1y.granularity).toBe('month');
+    expect(p1y.from).toBe(`${TODAY.slice(0, 4)}-01-01`);
+    expect(p1y.points).toHaveLength(Number(TODAY.slice(5, 7)));
+    expect(p1y.points.at(-1).end).toBe(TODAY);
+  });
+
+  it('says so when there is no comparable earlier period instead of inventing 0%', async () => {
+    const p = (await perf('90d').expect(200)).body;
+    expect(p.hasData).toBe(true);
+    expect(p.enoughHistory).toBe(false);
+    expect(p.trend).toBe('UNKNOWN');
+    expect(p.comparison.sales.changePct).toBeNull();
+    expect(p.comparison.sales.previous).toBe('0.00');
+    expect(p.insights.join(' ')).toMatch(/Not enough earlier records/);
+  });
+
+  it('counts invoice sales on the issue date, and a payment does not count the sale twice', async () => {
+    const c = await newCustomer('Perf Customer', tokenC);
+    const inv = await newInvoice(
+      c.id,
+      '500',
+      { issueDate: addDaysIso(TODAY, -1) },
+      tokenC,
+    );
+    let p = (await perf('7d').expect(200)).body;
+    expect(p.totals.sales).toBe('2000.00');
+
+    await as(tokenC)
+      .post(`/invoices/${inv.id}/payments`, {
+        amount: '100',
+        method: 'CASH',
+        paymentDate: addDaysIso(TODAY, -1),
+      })
+      .expect(201);
+    p = (await perf('7d').expect(200)).body;
+    expect(p.totals.sales).toBe('2000.00');
+    expect(p.totals.profit).toBe('1500.00');
+
+    // A draft is not revenue yet.
+    await as(tokenC)
+      .post('/invoices', {
+        customerId: c.id,
+        issueDate: TODAY,
+        dueDate: addDaysIso(TODAY, 7),
+        saveAsDraft: true,
+        items: [{ description: 'Draft', quantity: '1', unitPrice: '999' }],
+      })
+      .expect(201);
+    expect((await perf('7d').expect(200)).body.totals.sales).toBe('2000.00');
+  });
+
+  it('follows edits and deletions immediately', async () => {
+    const created = (
+      await as(tokenC)
+        .post('/transactions', {
+          type: 'INCOME',
+          amount: '700',
+          category: 'Sales',
+          date: TODAY,
+        })
+        .expect(201)
+    ).body;
+    expect((await perf('7d').expect(200)).body.totals.sales).toBe('2700.00');
+
+    await as(tokenC)
+      .patch(`/transactions/${created.id}`, { amount: '300' })
+      .expect(200);
+    expect((await perf('7d').expect(200)).body.totals.sales).toBe('2300.00');
+
+    await as(tokenC).del(`/transactions/${created.id}`).expect(204);
+    expect((await perf('7d').expect(200)).body.totals.sales).toBe('2000.00');
+  });
+
+  it('is empty, and isolated, for a brand-new business', async () => {
+    const tokenD = await signTestToken({
+      sub: 'user-perf-empty',
+      fullName: 'No Data',
+    });
+    await as(tokenD)
+      .post('/auth/bootstrap', {
+        fullName: 'No Data',
+        businessName: 'Empty Shop',
+      })
+      .expect(200);
+    const p = (await perf('30d', tokenD).expect(200)).body;
+    expect(p.totals).toEqual({
+      sales: '0.00',
+      expenses: '0.00',
+      profit: '0.00',
+    });
+    expect(p.points).toHaveLength(30);
+    expect(p.hasData).toBe(false);
+    expect(p.enoughHistory).toBe(false);
+    expect(p.trend).toBe('UNKNOWN');
+    expect(p.insights.join(' ')).toMatch(/No sales or expenses/);
+  });
+
+  it('rejects unknown periods and needs a token', async () => {
+    await perf('5y').expect(400);
+    await http().get('/api/reports/performance?period=30d').expect(401);
   });
 });
 
