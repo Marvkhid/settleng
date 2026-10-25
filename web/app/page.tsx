@@ -1,41 +1,40 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Check, LineChart, ReceiptText, Users, Wallet } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
-import {
-  ChartIllustration,
-  InvoiceIllustration,
-  NairaIllustration,
-  ReceiptsIllustration,
-  StallIllustration,
-} from "@/components/marketing/illustrations";
 
 const FEATURES = [
   {
     title: "Sales tracking",
     body: "Write down what you sold in a few taps. Cash, transfer, POS or on credit.",
     Icon: Wallet,
-    art: <NairaIllustration className="h-full w-full" />,
+    img: { src: "/images/feature-sales.jpg", alt: "A trader showing his sales on his phone to a customer at a fruit stall" },
   },
   {
     title: "Expense tracking",
     body: "Record stock, transport, rent and wages so you can see where money goes.",
     Icon: ReceiptText,
-    art: <ReceiptsIllustration className="h-full w-full" />,
+    img: { src: "/images/feature-expenses.jpg", alt: "A carpenter planing timber in his workshop" },
   },
   {
     title: "Customer debts",
     body: "See who owes you, how much, and since when. Mark payments as they come in.",
     Icon: Users,
-    art: <InvoiceIllustration className="h-full w-full" />,
+    img: { src: "/images/feature-debts.jpg", alt: "A fabric seller resting against a stack of folded Ankara cloth in her shop" },
   },
   {
     title: "Simple reporting",
     body: "A plain summary of sales, spending and debts, ready to download.",
     Icon: LineChart,
-    art: <ChartIllustration className="h-full w-full" />,
+    img: { src: "/images/feature-reports.jpg", alt: "A farmer smiling at her phone while holding a basket of produce" },
   },
+];
+
+const TRADES = [
+  { label: "Tailors & designers", img: { src: "/images/trade-tailor.jpg", alt: "A tailor sewing a garment at her machine" } },
+  { label: "Food & produce sellers", img: { src: "/images/trade-food.jpg", alt: "A food seller at her stall of packaged snacks" } },
 ];
 
 const STEPS = [
@@ -154,7 +153,15 @@ export default function Landing() {
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {FEATURES.map((f) => (
                 <article key={f.title} className="tilt group overflow-hidden rounded-3xl border border-line bg-surface shadow-depth">
-                  <div className="aspect-4/3 overflow-hidden">{f.art}</div>
+                  <div className="relative aspect-4/3 overflow-hidden">
+                    <Image
+                      src={f.img.src}
+                      alt={f.img.alt}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
                   <div className="p-5">
                     <div className="flex items-center gap-2">
                       <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-wash text-emerald-ink">
@@ -184,7 +191,35 @@ export default function Landing() {
           </ol>
         </section>
 
-        {/* Closing CTA with the stall illustration */}
+        {/* Who it's for */}
+        <section aria-labelledby="trades" className="border-y border-line bg-sunken/60">
+          <div className="mx-auto w-full max-w-6xl px-5 py-14 md:px-8">
+            <h2 id="trades" className="max-w-2xl text-3xl font-extrabold md:text-4xl">
+              Made for every kind of business
+            </h2>
+            <p className="mt-3 max-w-2xl text-lg text-slate">
+              Tailors, carpenters, food sellers, farmers, salon owners — if you sell, SettleNG fits how you work.
+            </p>
+            <div className="mt-10 grid max-w-3xl gap-5 sm:grid-cols-2">
+              {TRADES.map((t) => (
+                <figure key={t.label} className="tilt group overflow-hidden rounded-3xl border border-line bg-surface shadow-depth">
+                  <div className="relative aspect-4/5 overflow-hidden">
+                    <Image
+                      src={t.img.src}
+                      alt={t.img.alt}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 370px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <figcaption className="px-5 py-4 text-lg font-bold">{t.label}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Closing CTA */}
         <section className="mx-auto w-full max-w-6xl px-5 pb-20 md:px-8">
           <div className="grid items-center gap-8 overflow-hidden rounded-3xl bg-panel p-8 text-white md:grid-cols-[1.2fr_1fr] md:p-12">
             <div>
@@ -201,8 +236,14 @@ export default function Landing() {
                 </Link>
               </div>
             </div>
-            <div className="float">
-              <StallIllustration className="w-full drop-shadow-2xl" />
+            <div className="float relative aspect-4/5 overflow-hidden rounded-3xl ring-1 ring-white/15">
+              <Image
+                src="/images/cta-trader.jpg"
+                alt="A market trader smiling and giving two thumbs up"
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover"
+              />
             </div>
           </div>
         </section>
