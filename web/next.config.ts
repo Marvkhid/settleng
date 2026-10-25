@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Pin the workspace root so Turbopack doesn't jump up to a parent lockfile. The web app owns
   // web/package-lock.json; there is intentionally no root lockfile.
-  turbopack: { root: __dirname },
+  // Removed turbopack to avoid lightningcss native module error on Vercel
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
