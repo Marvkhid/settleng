@@ -1,15 +1,19 @@
 # Render Blueprint for the SettleNG API. Render: New > Blueprint > pick this repo.
 # The web app is deployed separately on Vercel (Root Directory: web). See docs/DEPLOYMENT.md.
 #
-# Tip: create the service via the Blueprint (not by connecting the GitHub repo directly) so
-# Render picks up rootDir, buildCommand, startCommand and the env var templates from this file.
+# Important: this service must build from the REPOSITORY ROOT, not from api/, because the repo is
+# an npm workspace whose single lockfile (package-lock.json) lives at the root. The build script
+# installs only the api workspace, so a root-level build is still small.
+#
+# Do not use Render's auto-detected Yarn command (`yarn install; yarn build`): this repo uses npm,
+# and Yarn 1 refuses to run while package.json declares a package manager it is not.
 services:
   - type: web
     name: settleng-api
     runtime: node
-    rootDir: api
-    buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm run start:deploy
+    rootDir: .
+    buildCommand: bash scripts/render-build.sh
+    startCommand: npm run start:deploy --prefix api
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION

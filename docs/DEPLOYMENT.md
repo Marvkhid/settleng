@@ -68,6 +68,13 @@ emailed confirmation and password-reset links send people back to your site.
 
 ## 3. Deploy the API (Render)
 
+> **Package manager:** this repo is an **npm** workspace (one root `package-lock.json`, `workspaces: [api, web]`).
+> Do not let Render use its auto-detected Yarn command. Yarn 1 fails immediately with
+> `This project's package.json defines "packageManager"` before anything is installed. The blueprint
+> below runs `bash scripts/render-build.sh`, which uses `npm ci` and stops at the first failure.
+> Node is pinned to **22** by `.node-version`, so Render does not pick a brand-new major (it selected
+> Node 26 for an earlier build, which is not what this stack is tested on).
+
 1. On render.com choose **New > Blueprint**, connect your GitHub repo, and select it. Render reads `render.yaml`.
 2. It asks for these secret values:
    | Name | Value |
@@ -81,6 +88,22 @@ emailed confirmation and password-reset links send people back to your site.
    (shows `"database":"up"`). Also confirm a protected route returns 401 without a token, e.g. `https://YOUR-API/api/dashboard`.
 
 The API applies any new database migrations every time it starts (`npm run start:deploy`).
+
+### Already created the service by connecting the repo? Fix its settings
+
+A service created with **New > Web Service** (instead of the Blueprint) keeps its own build command and
+ignores `render.yaml`. That is why a build can fail with `yarn install` even though the blueprint is correct.
+In the service's **Settings** page set:
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | *(empty — the repository root)* |
+| Build Command | `bash scripts/render-build.sh` |
+| Start Command | `npm run start:deploy --prefix api` |
+| Health Check Path | `/api/health` |
+
+Then **Manual Deploy > Clear build cache & deploy**. Alternatively delete the service and create it
+again from the Blueprint, which applies all of the above automatically.
 
 **Other hosts (Railway, Fly.io, any Docker host):** use `api/Dockerfile` (build context = the `api` folder), set the same
 environment variables, and set the health check path to `/api/health`. The host provides `PORT`; the API reads it.
