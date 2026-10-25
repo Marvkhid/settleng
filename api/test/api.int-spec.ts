@@ -7,6 +7,7 @@ import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { addDaysIso, todayInLagos } from '../src/common/dates';
+import { SupabaseAdminService } from '../src/auth/supabase-admin';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { signTestToken } from './support/tokens';
 
@@ -41,7 +42,12 @@ const as = (token: string) => ({
 beforeAll(async () => {
   const mod = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    // Account deletion also removes the Supabase auth user; the suite has no live project, so the
+    // admin call is stubbed. Everything else (data deletion) runs for real.
+    .overrideProvider(SupabaseAdminService)
+    .useValue({ deleteUser: async () => undefined })
+    .compile();
   app = mod.createNestApplication();
   configureApp(app, ['http://localhost:3000']);
   await app.init();
@@ -743,7 +749,8 @@ describe('CSV reconciliation', () => {
   });
 
   it('enforces file rules: csv only, present, and size/row limits', async () => {
-    await as(tokenA).post('/reconciliation/preview').expect(400);    await request(app.getHttpServer() as App)
+    await as(tokenA).post('/reconciliation/preview').expect(400);
+    await request(app.getHttpServer() as App)
       .post('/api/reconciliation/preview')
       .set('Authorization', `Bearer ${tokenA}`)
       .attach('file', Buffer.from('a'), 'notes.txt')
@@ -759,5 +766,53 @@ describe('CSV reconciliation', () => {
       '/reconciliation/preview',
     ).expect(200);
     expect(r.body.problems.join(' ')).toMatch(/more than 500/);
+  });
+});
+
+describe('account deletion', () => {
+  it("deletes all of the account's data, even after a CSV match was confirmed, and leaves other tenants intact", async () => {
+    const business = await prisma.business.findUniqueOrThrow({
+      where: { ownerId: OWNER_B },
+    });
+    const customer = await newCustomer('Deletable customer', tokenB);
+    const invoice = await newInvoice(customer.id, '1200', {}, tokenB);
+    // A confirmed match stores a Transaction pointing at its ImportedTransaction (onDelete:
+    // Restrict), which used to make account deletion fail on a foreign key.
+    const csv = [
+      'Date,Description,Amount,Direction,Reference',
+      `${addDaysIso(TODAY, -1)},Transfer ${invoice.invoiceNumber},${invoice.balance},credit,DEL-1`,
+    ].join('\n');
+    const saved = (
+      await request(app.getHttpServer() as App)
+        .post('/api/reconciliation/imports')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .attach('file', Buffer.from(csv), 'delete-me.csv')
+        .expect(201)
+    ).body;
+    const rows = (
+      await as(tokenB).get(`/reconciliation/imports/${saved.id}`).expect(200)
+    ).body.rows;
+    await as(tokenB)
+      .post(`/reconciliation/rows/${rows[0].id}/confirm`)
+      .expect(200);
+
+    await as(tokenB).del('/auth/account').expect(200);
+
+    expect(await prisma.business.count({ where: { id: business.id } })).toBe(0);
+    expect(await prisma.profile.count({ where: { userId: OWNER_B } })).toBe(0);
+    expect(
+      await prisma.transaction.count({ where: { businessId: business.id } }),
+    ).toBe(0);
+    expect(
+      await prisma.importedTransaction.count({
+        where: { import: { businessId: business.id } },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.invoice.count({ where: { businessId: business.id } }),
+    ).toBe(0);
+
+    // The other tenant is untouched and still reachable.
+    await as(tokenA).get('/dashboard').expect(200);
   });
 });

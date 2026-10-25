@@ -417,7 +417,7 @@ export class ReconciliationService {
 
   private async getRow(rowId: string) {
     const row = await this.prisma.importedTransaction.findFirstOrThrow({
-      where: { id: rowId },
+      where: { id: rowId, import: { businessId: requireBusinessId() } },
     });
     return {
       id: row.id,

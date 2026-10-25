@@ -55,7 +55,14 @@ await check('behind a proxy, rate limits are per visitor (trust proxy): differen
 });
 await check('Swagger docs still load with the security headers on', async () => { assert.equal((await fetch(A + '/api/docs')).status, 200); });
 await check('error responses stay friendly and never leak internals', async () => {
-  const r = await j('/api/customers/does-not-exist'); assert.equal(r.status, 404); assert.ok(!JSON.stringify(r.body).match(/prisma|stack|node_modules/i));
+  // Without a token the guard answers first: a plain sign-in message (it must not reveal whether
+  // the record exists to a stranger).
+  const auth = await j('/api/customers/does-not-exist');
+  assert.equal(auth.status, 401); assert.match(auth.body.message, /sign in/i);
+  // An unknown path reaches the router, so its 404 goes through our exception filter.
+  const missing = await j('/api/health/does-not-exist');
+  assert.equal(missing.status, 404); assert.equal(missing.body.statusCode, 404); assert.equal(typeof missing.body.message, 'string');
+  for (const r of [auth, missing]) assert.ok(!JSON.stringify(r.body).match(/prisma|stack|node_modules/i), JSON.stringify(r.body));
 });
 api.kill('SIGTERM');
 

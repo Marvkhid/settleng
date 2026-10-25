@@ -94,13 +94,20 @@ export class AuthController {
       const businessId = business.id;
       await this.prisma.$transaction(
         async (tx) => {
-          // Children first: ImportedTransaction references invoices/transactions, so clear links
-          // before deleting the rows they point at.
-          await tx.importedTransaction.deleteMany({ where: { import: { businessId } } });
-          await tx.reconciliationImport.deleteMany({ where: { businessId } });
+          // Delete children before parents. Transactions go first: a confirmed CSV match stores a
+          // Transaction that references its ImportedTransaction with onDelete: Restrict, so
+          // deleting the imported rows first would fail.
           await tx.transaction.deleteMany({ where: { businessId } });
-          await tx.invoicePayment.deleteMany({ where: { invoice: { businessId } } });
-          await tx.invoiceItem.deleteMany({ where: { invoice: { businessId } } });
+          await tx.importedTransaction.deleteMany({
+            where: { import: { businessId } },
+          });
+          await tx.reconciliationImport.deleteMany({ where: { businessId } });
+          await tx.invoicePayment.deleteMany({
+            where: { invoice: { businessId } },
+          });
+          await tx.invoiceItem.deleteMany({
+            where: { invoice: { businessId } },
+          });
           await tx.invoice.deleteMany({ where: { businessId } });
           await tx.customer.deleteMany({ where: { businessId } });
           await tx.auditEvent.deleteMany({ where: { businessId } });

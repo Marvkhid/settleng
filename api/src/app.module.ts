@@ -14,9 +14,14 @@ import { ReportsModule } from './reports/reports.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AuditController } from './audit/audit.controller';
 
+// Jest sets NODE_ENV=test. Tests must never inherit a developer's api/.env (it would point the
+// suite at a real Supabase project and the wrong database), so the file is ignored there and
+// process.env is the only source of configuration.
+const isTest = process.env.NODE_ENV === 'test';
+
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: isTest }),
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: 120 }],
       skipIf: () => process.env.THROTTLE_DISABLED === 'true',
