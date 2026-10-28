@@ -126,6 +126,15 @@ The website shows its loading states meanwhile.
 > `NEXT_PUBLIC_*` values are baked in when the site is **built**. If you change them later you must **redeploy** the site.
 > If you forget `NEXT_PUBLIC_API_URL`, the build fails on purpose with a message saying so.
 
+> **Dependencies (one lockfile for the whole repo).** The website and the API share the single
+> `package-lock.json` at the repository root; there are no per-app lockfiles. Vercel resolves this
+> workspace root even though its Root Directory is `web`, so that one file must stay complete for **every**
+> platform — including the optional native binaries (`lightningcss-*`, `@tailwindcss/oxide-*`, `@next/swc-*`).
+> A lockfile rewritten on a Windows machine that already has `node_modules/` silently drops the Linux ones,
+> and the Vercel build then fails with `Cannot find module '../lightningcss.linux-x64-gnu.node'`.
+> If you ever need to regenerate it, start from no lockfile and no `node_modules` so npm resolves all platforms:
+> `rm -rf node_modules package-lock.json && npm install --package-lock-only && npm install`.
+
 ## 5. Make the API accept your website
 
 If the website address Vercel gave you is exactly what you put in `CORS_ORIGIN`, skip this.
