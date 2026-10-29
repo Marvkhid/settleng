@@ -32,7 +32,12 @@ export default function SignupPage() {
       const { data, error } = await supabase().auth.signUp({
         email: email.trim(),
         password,
-        options: { data: { full_name: fullName.trim(), business_name: businessName.trim() } },
+        options: {
+          data: { full_name: fullName.trim(), business_name: businessName.trim() },
+          // Send confirmation links back to THIS deployment's callback route, not the provider's
+          // default. The route verifies the token server-side and only then creates a session.
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/onboarding")}`,
+        },
       });
       if (error) {
         toast.error(messageFor(error.code ?? "", error.message));
@@ -40,8 +45,8 @@ export default function SignupPage() {
       }
       // If email confirmation is on, there is no session yet — send them to a check-your-inbox note.
       if (!data.session) {
-        toast.success("Almost there! Check your email to confirm your account, then log in.");
-        router.replace("/login?checkEmail=1");
+        toast.success("Account created. Check your email for the confirmation link.");
+        router.replace(`/login?checkEmail=1&email=${encodeURIComponent(email.trim())}`);
         return;
       }
       // Create the Profile + Business on the API, then land in the dashboard.

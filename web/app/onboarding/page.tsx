@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AuthProvider, useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { api } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase/client";
 
 /**
  * First-run onboarding: names the business and the owner. Creates the Business + Profile via the
@@ -26,6 +27,25 @@ function OnboardingForm() {
   const [fullName, setFullName] = useState(me?.fullName ?? "");
   const [businessName, setBusinessName] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Carry over what they typed at sign-up, so confirming an email never means retyping it.
+  useEffect(() => {
+    let cancelled = false;
+    supabase()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const meta = data.user?.user_metadata as
+          | { full_name?: string; business_name?: string }
+          | undefined;
+        setFullName((v) => v || meta?.full_name || "");
+        setBusinessName((v) => v || meta?.business_name || "");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // If onboarding is already done, don't linger here.
   if (!loading && me?.business) {

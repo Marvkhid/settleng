@@ -18,9 +18,18 @@
   --red-wash: #fbe9e6;
   --amber: #85560c;
   --amber-wash: #fbf0dc;
+  /* Accent family: gold for the free pledge, clay for the human/story moments, sky for reference
+     and informational surfaces. Used sparingly so emerald stays clearly the brand colour. */
+  --gold: #9a6a08;
+  --gold-wash: #fbf1dc;
+  --clay: #a8441f;
+  --clay-wash: #faece4;
+  --sky: #1c5c9c;
+  --sky-wash: #e7f0f9;
   /* A deliberate dark accent panel (hero cards, active nav). Stays dark in BOTH modes, unlike
      --ink which flips to light for text in dark mode. */
   --panel: #0f1b33;
+  --panel-soft: #17253f;
   --radius: 0.75rem;
 }
 
@@ -43,7 +52,14 @@
   --red-wash: #3a1618;
   --amber: #fbbf24;
   --amber-wash: #322609;
+  --gold: #f0c272;
+  --gold-wash: #2b2210;
+  --clay: #f7a887;
+  --clay-wash: #321c14;
+  --sky: #93c3f2;
+  --sky-wash: #102235;
   --panel: #0f1b33;
+  --panel-soft: #1a2a46;
 }
 
 @theme inline {
@@ -64,6 +80,13 @@
   --color-red-wash: var(--red-wash);
   --color-amber: var(--amber);
   --color-amber-wash: var(--amber-wash);
+  --color-gold: var(--gold);
+  --color-gold-wash: var(--gold-wash);
+  --color-clay: var(--clay);
+  --color-clay-wash: var(--clay-wash);
+  --color-sky: var(--sky);
+  --color-sky-wash: var(--sky-wash);
+  --color-panel-soft: var(--panel-soft);
   --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
@@ -133,3 +156,66 @@ h1, h2, h3, .font-display { font-family: var(--font-display), ui-sans-serif, sys
 .hero-grid { background-image: radial-gradient(circle at 1px 1px, rgba(15, 27, 51, 0.06) 1px, transparent 0); background-size: 28px 28px; }
 
 .reveal-on-scroll { scroll-behavior: smooth; }
+
+/* ---- Marketing surfaces ---- */
+
+/* Deep panel used for the hero card, product preview and closing CTA. Stays dark in both modes. */
+.panel-dark {
+  background-color: var(--panel);
+  background-image:
+    radial-gradient(120% 90% at 8% 0%, rgba(15, 157, 110, 0.34), transparent 60%),
+    radial-gradient(90% 70% at 100% 100%, rgba(28, 92, 156, 0.32), transparent 62%);
+  color: #f4f7fb;
+}
+
+/* Fine paper grain, applied over photography and panels for a printed, editorial feel. */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* A hairline that fades out at both ends — separates sections without a hard box. */
+.hairline {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent);
+}
+
+/* Soft framed photograph: consistent rounded corners + inset ring + depth. */
+.frame-photo { position: relative; overflow: hidden; border-radius: 1.75rem; box-shadow: 0 24px 60px -34px rgba(15, 27, 51, 0.55); }
+.frame-photo > img { transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+.frame-photo:hover > img { transform: scale(1.035); }
+
+/* Small caps label used above section headings. */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--emerald-ink);
+}
+
+/* Underline that grows from the left on hover, for inline text links. */
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1.5px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-underline:hover, .link-underline:focus-visible { background-size: 100% 1.5px; }
+
+/* Skeleton shimmer for marketing placeholders (the app has its own pulse skeletons). */
+@keyframes sheen { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
+.sheen { position: relative; overflow: hidden; }
+.sheen::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent); animation: sheen 2.4s ease-in-out infinite; }
+
+/* Steps connector: a dashed rule that only shows on wide screens. */
+.step-line { background-image: linear-gradient(90deg, var(--line) 50%, transparent 50%); background-size: 10px 1px; background-repeat: repeat-x; }
