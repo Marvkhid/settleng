@@ -19,7 +19,11 @@ source of each file can be checked.
 | `case-food.jpg` | A street food vendor at his stall in Kaduna, Nigeria | [Pexels 33559228](https://www.pexels.com/photo/33559228/) |
 
 `founder-marvel.png` is a portrait of Marvel Adeniyi supplied by him. The background was removed
-from the original photograph on 29 October 2026; the person, clothing and pose are unchanged.
+from the original photograph on 29 October 2026; the person, clothing and pose are unchanged. It is
+no longer used by any page.
+
+`my-dark-pic.avif` is the portrait currently shown on the About page. It is a real photograph
+supplied by Marvel Adeniyi, unedited apart from compression to AVIF.
 
 ## Not in use
 

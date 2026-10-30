@@ -46,6 +46,22 @@ emailed confirmation and password-reset links send people back to your site.
      - `https://settleng.vercel.app`
      - `https://settleng.vercel.app/**`
      - `http://localhost:3000` (for local development)
+
+   > **This is what breaks confirmation links.** If **Site URL** is still `http://localhost:3000`, every
+   > confirmation and reset link redirects there, even for people clicking from a phone on the live site.
+   > Nothing consumes the token on that address, and a Supabase link only works **once** — so the next
+   > attempt (or the same click after the redirect) reports `otp_expired` / `access_denied`.
+   > Set Site URL to the live website before testing sign-up again.
+   >
+   > The site sends each link to its own callback (`/auth/confirm`), which verifies the token
+   > server-side and only then starts a session. The default **Confirm signup** template works once
+   > Site URL is right; for the most robust setup, point the template at the verifier directly:
+   >
+   > ```
+   > {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next=/onboarding
+   > ```
+   >
+   > Use the same pattern for **Reset password** with `type=recovery&next=/reset-password`.
 2. In **Authentication > Providers > Email**, make sure **Email** is enabled. For a smooth first run you
    can turn **Confirm email** off; leave it on for production (users click a link before their first login).
 3. Note your **Project URL** and **anon / publishable key** (Project Settings > API) — the website needs both.
@@ -65,6 +81,28 @@ emailed confirmation and password-reset links send people back to your site.
 
 > `db:deploy` applies `api/prisma/migrations/`. If you later run `npx prisma migrate dev` and Prisma proposes a
 > small follow-up migration, accept it (commit the new folder); nothing is lost.
+
+> **`P3005: The database schema is not empty`.** The tables already exist but Prisma has no record of
+> creating them — usually because the database was set up by pasting `schema.sql` / running
+> `prisma db push` instead of using the migrations. Do **not** reset the database; tell Prisma the two
+> committed migrations are already applied:
+>
+> ```
+> cd api
+> npx prisma migrate resolve --applied 20261008000000_init
+> npx prisma migrate resolve --applied 20261010000000_add_profiles_and_business_owner
+> npx prisma migrate deploy      # should now report "No pending migrations"
+> ```
+>
+> Only do this when the existing tables really match `api/prisma/schema.prisma`. Check first — this prints
+> nothing when there is no difference:
+>
+> ```
+> npx prisma migrate diff --from-url "$DIRECT_URL" --to-schema-datamodel prisma/schema.prisma --script
+> ```
+>
+> After baselining, the API's start command (`prisma migrate deploy && node dist/main`) stops failing and the
+> service boots.
 
 ## 3. Deploy the API (Render)
 
