@@ -44,7 +44,7 @@ export function ResendConfirmation({ defaultEmail = "" }: { defaultEmail?: strin
       });
       if (sendError) {
         if (sendError.code === "over_email_send_rate_limit" || sendError.status === 429) {
-          setError("Too many emails have been sent to this address. Please wait a few minutes and try again.");
+          setError("Our email sender is rate-limited right now, so nothing was sent. Please try again in a few minutes.");
         } else if (sendError.code === "user_not_found") {
           setError("We couldn't find an account with that email. Try creating one instead.");
         } else {
@@ -83,11 +83,17 @@ export function ResendConfirmation({ defaultEmail = "" }: { defaultEmail?: strin
         </Button>
       </div>
       {sent && (
-        <p role="status" className="flex items-start gap-2 text-sm font-medium text-emerald-ink">
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Sent. Check your inbox (and spam) for a fresh link. It expires, so open it soon after it
-          arrives.
-        </p>
+        <div role="status" className="space-y-1 text-sm">
+          <p className="flex items-start gap-2 font-medium text-emerald-ink">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+            The email sender accepted the request. Check your inbox and spam for a fresh link — it
+            expires, so open it soon after it arrives.
+          </p>
+          <p className="text-slate">
+            If it has not arrived within a couple of minutes, our email sender is probably throttled.
+            Wait a few minutes, then try again.
+          </p>
+        </div>
       )}
       {error && (
         <p role="alert" className="text-sm font-medium text-red">

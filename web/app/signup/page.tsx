@@ -13,7 +13,12 @@ import { supabase } from "@/lib/supabase/client";
 function messageFor(code: string, fallback: string): string {
   if (code === "email_exists") return "An account with this email already exists. Try logging in.";
   if (code === "weak_password") return "Please choose a password of at least 6 characters.";
-  if (code === "over_email_send_rate_limit") return "Too many attempts. Please wait a moment and try again.";
+  if (code === "email_address_invalid") return "That email address was rejected. Please check it and try again.";
+  // Supabase rejects the whole sign-up with a 429 when its email sender is rate-limited, so no
+  // account exists afterwards. Saying "try again" without that detail is what makes people assume
+  // they registered and keep waiting for an email that was never sent.
+  if (code === "over_email_send_rate_limit")
+    return "Our email sender is rate-limited right now, so your account was not created. Please try again in a few minutes.";
   return fallback;
 }
 
@@ -40,7 +45,7 @@ export default function SignupPage() {
         },
       });
       if (error) {
-        toast.error(messageFor(error.code ?? "", error.message));
+        toast.error(messageFor(error.code ?? "", error.message), { duration: 8000 });
         return;
       }
       // If email confirmation is on, there is no session yet — send them to a check-your-inbox note.
