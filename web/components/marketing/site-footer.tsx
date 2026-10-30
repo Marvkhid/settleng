@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, MessageCircle, Phone } from "lucide-react";
+import { Wordmark } from "@/components/brand/logo";
 
 export const SUPPORT_EMAIL = "adeniyimarv@gmail.com";
 export const SUPPORT_PHONE_DISPLAY = "0810 738 7326";
@@ -42,9 +43,7 @@ export function SiteFooter() {
       <div className="relative mx-auto w-full max-w-6xl px-5 py-14 md:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_2.6fr]">
           <div>
-            <p className="font-display text-2xl font-extrabold tracking-tight text-white">
-              Settle<span className="text-emerald">NG</span>
-            </p>
+            <Wordmark tone="light" />
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/70">
               A free money tracker for Nigerian traders and small business owners. Record sales and
               expenses, review your records, and see how your business is moving.

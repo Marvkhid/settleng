@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
+import { Wordmark } from "@/components/brand/logo";
 
 interface Item { href: string; label: string; Icon: typeof Home; match: (p: string, type: string | null) => boolean }
 const PRIMARY: Item[] = [
@@ -26,13 +27,6 @@ const SECONDARY: Item[] = [
   { href: "/settings", label: "Settings", Icon: Settings, match: (p) => p.startsWith("/settings") },
 ];
 
-function Wordmark() {
-  return (
-    <Link href="/dashboard" className="inline-flex min-h-11 items-center font-display text-2xl font-extrabold tracking-tight text-ink">
-      Settle<span className="text-emerald">NG</span>
-    </Link>
-  );
-}
 
 function SideLink({ item, active }: { item: Item; active: boolean }) {
   return (
@@ -49,7 +43,7 @@ function Sidebar() {
   const { businessName } = useAuth();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-6 border-r border-line bg-paper p-5 md:flex">
-      <Wordmark />
+      <Wordmark href="/dashboard" />
       {businessName && <p className="-mt-3 truncate text-sm text-slate">{businessName}</p>}
       <nav aria-label="Main" className="flex flex-col gap-1">{PRIMARY.map((i) => <SideLink key={i.href} item={i} active={i.match(path, type)} />)}</nav>
       <nav aria-label="More" className="mt-auto flex flex-col gap-1 border-t border-line pt-4">{SECONDARY.map((i) => <SideLink key={i.href} item={i} active={i.match(path, type)} />)}</nav>

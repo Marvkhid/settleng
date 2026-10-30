@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Wordmark } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 /**
@@ -24,9 +24,7 @@ export function AuthShell({
       </div>
 
       <div className="mb-6 flex w-full max-w-md items-center justify-between">
-        <Link href="/" className="font-display text-3xl font-extrabold tracking-tight">
-          Settle<span className="text-emerald">NG</span>
-        </Link>
+        <Wordmark />
         <ThemeToggle />
       </div>
 

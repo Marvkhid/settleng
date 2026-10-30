@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, Menu } from "lucide-react";
+import { Wordmark } from "@/components/brand/logo";
 import { buttonVariants } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -14,21 +15,6 @@ const NAV = [
   { href: "/about", label: "About" },
   { href: "/support", label: "Support" },
 ];
-
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <Link
-      href="/"
-      aria-label="SettleNG home"
-      className={cn(
-        "inline-flex min-h-11 items-center font-display text-2xl font-extrabold tracking-tight text-ink",
-        className,
-      )}
-    >
-      Settle<span className="text-emerald">NG</span>
-    </Link>
-  );
-}
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
