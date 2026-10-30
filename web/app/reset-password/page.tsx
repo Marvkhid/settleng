@@ -68,7 +68,38 @@ function ResetForm() {
         return;
       }
 
-      // Implicit flow: the browser client reads the tokens out of the URL hash itself.
+      // Implicit flow: the tokens arrive in the URL fragment, which no server can see. Read them
+      // here rather than assuming the client has already processed the URL, then clear the fragment
+      // so refreshing the page cannot replay a link that has been used.
+      const hash = new URLSearchParams(
+        window.location.hash.startsWith("#")
+          ? window.location.hash.slice(1)
+          : window.location.hash,
+      );
+      const hashError = hash.get("error_code") ?? hash.get("error");
+      if (hashError) {
+        if (!cancelled) {
+          setMessage(messageForSearch(hash));
+          setState("invalid");
+        }
+        return;
+      }
+
+      const accessToken = hash.get("access_token");
+      const refreshToken = hash.get("refresh_token");
+      if (accessToken && refreshToken) {
+        const { error } = await supabaseClient.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (cancelled) return;
+        if (!error) {
+          window.history.replaceState(null, "", window.location.pathname);
+          setState("ready");
+          return;
+        }
+      }
+
       const { data } = await supabaseClient.auth.getSession();
       if (cancelled) return;
       setState(data.session ? "ready" : "invalid");

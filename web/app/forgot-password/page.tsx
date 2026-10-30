@@ -30,7 +30,14 @@ export default function ForgotPasswordPage() {
         ...(captchaToken ? { captchaToken } : {}),
       });
       if (error) {
-        toast.error("We couldn't send the reset email. Please try again.");
+        // A throttled sender means nothing was sent at all — saying "check your email" would leave
+        // the person waiting for a message that never existed.
+        toast.error(
+          error.code === "over_email_send_rate_limit" || error.status === 429
+            ? "Our email sender is rate-limited right now, so no reset email was sent. Please try again in a few minutes."
+            : "We couldn't send the reset email. Please try again.",
+          { duration: 8000 },
+        );
         setCaptchaToken(null);
         setCaptchaRound((r) => r + 1);
         return;
@@ -57,9 +64,15 @@ export default function ForgotPasswordPage() {
       }
     >
       {sent ? (
-        <p className="rounded-xl bg-emerald-wash p-4 font-medium text-emerald-ink">
-          Check your email — we&apos;ve sent a link to reset your password.
-        </p>
+        <div className="rounded-xl bg-emerald-wash p-4">
+          <p className="font-medium text-emerald-ink">
+            If that address has an account, a reset link is on its way.
+          </p>
+          <p className="mt-2 text-sm text-ink-soft">
+            Open it once, soon after it arrives — the link works a single time. If nothing comes
+            within a few minutes, our email sender may be throttled; try again shortly.
+          </p>
+        </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <Field label="Email" htmlFor="email">

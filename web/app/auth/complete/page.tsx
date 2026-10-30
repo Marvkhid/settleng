@@ -20,15 +20,22 @@ export default function AuthCompletePage() {
   );
 }
 
-function safeNext(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+function safeNext(raw: string | null, fallback = "/dashboard"): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return fallback;
   return raw;
+}
+
+/** A recovery link carries `type=recovery` in the hash; those must open the reset form. */
+function hashIsRecovery(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+  return new URLSearchParams(hash).get("type") === "recovery";
 }
 
 function Complete() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = safeNext(params.get("next"));
+  const next = safeNext(params.get("next"), hashIsRecovery() ? "/reset-password" : "/dashboard");
   const [state, setState] = useState<"checking" | "invalid">("checking");
 
   useEffect(() => {

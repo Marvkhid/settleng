@@ -24,9 +24,9 @@ function otpType(raw: string | null): OtpType {
  */
 
 /** Only same-site relative paths, so `?next=` cannot be used as an open redirect. */
-function safeNext(raw: string | null): string {
-  if (!raw) return "/dashboard";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+function safeNext(raw: string | null, fallback: string): string {
+  if (!raw) return fallback;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return fallback;
   return raw;
 }
 
@@ -39,14 +39,19 @@ function backToLogin(origin: string, code: string) {
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const origin = url.origin;
-  const next = safeNext(url.searchParams.get("next"));
+  const type = otpType(url.searchParams.get("type"));
+  // A recovery link signs the person in, so sending them to the dashboard would leave them with a
+  // new session and the old password. The whole point of that link is the reset form.
+  const next = safeNext(
+    url.searchParams.get("next"),
+    type === "recovery" ? "/reset-password" : "/dashboard",
+  );
 
   // Supabase reports its own failures in the query string (e.g. otp_expired, access_denied).
   const suppliedError = url.searchParams.get("error_code") ?? url.searchParams.get("error");
   if (suppliedError) return backToLogin(origin, suppliedError);
 
   const tokenHash = url.searchParams.get("token_hash");
-  const type = otpType(url.searchParams.get("type"));
   const code = url.searchParams.get("code");
 
   if (!tokenHash && !code) {
