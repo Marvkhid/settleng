@@ -65,6 +65,15 @@ export default function SignupPage() {
         refreshCaptcha();
         return;
       }
+      // Supabase hides existing accounts behind a 200 with an empty identities list instead of an
+      // error, so without this the page would congratulate someone on an account that already exists.
+      if (!data.session && data.user && (data.user.identities?.length ?? 0) === 0) {
+        toast.error("An account with this email already exists. Try logging in instead.", {
+          duration: 8000,
+        });
+        router.replace(`/login?email=${encodeURIComponent(email.trim())}`);
+        return;
+      }
       // No session means mandatory email confirmation is still switched on at the provider. Rather
       // than fake a sign-in, we say exactly that and offer a fresh link.
       if (!data.session) {
