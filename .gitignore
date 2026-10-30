@@ -16,4 +16,7 @@ npm-debug.log*
 
 .local-pg/
 
+# Supabase personal access token used only by scripts/supabase-auth-config.mjs
+scripts/.supabase-token
+
 e2e-failure-*.png

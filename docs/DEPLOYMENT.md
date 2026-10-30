@@ -62,9 +62,54 @@ emailed confirmation and password-reset links send people back to your site.
    > ```
    >
    > Use the same pattern for **Reset password** with `type=recovery&next=/reset-password`.
-2. In **Authentication > Providers > Email**, make sure **Email** is enabled. For a smooth first run you
-   can turn **Confirm email** off; leave it on for production (users click a link before their first login).
+2. In **Authentication > Providers > Email**, make sure **Email** is enabled and **Confirm email** is
+   **off** (see the next section — registration does not depend on an email round-trip).
 3. Note your **Project URL** and **anon / publishable key** (Project Settings > API) — the website needs both.
+
+### Registration without email confirmation
+
+SettleNG creates the account, starts the session and opens the dashboard in one step. Nothing is
+emailed that has to be clicked. This needs one provider setting:
+
+> **Confirm email** must be **off** (`mailer_autoconfirm = true`). With it on, Supabase refuses to
+> return a session from sign-up, so every new account is stuck until a link is clicked.
+
+You can flip it by hand in **Authentication > Providers > Email**, or let the script in this repo do it
+(plus the Site URL and redirect list above, so they cannot drift again):
+
+```bash
+# Token from https://supabase.com/dashboard/account/tokens (not the anon or service_role key)
+SUPABASE_ACCESS_TOKEN=sbp_... node scripts/supabase-auth-config.mjs --check   # show current values
+SUPABASE_ACCESS_TOKEN=sbp_... node scripts/supabase-auth-config.mjs           # apply
+```
+
+What registering sends is a plain **informational** email: "your address was used to create a SettleNG
+account, no action needed". It is fire-and-forget — if email fails, the account and the session are
+unaffected. It is sent by `/api/signup-notice`, which only mails the signed-in caller's own address and
+stays silent when no sender is configured:
+
+| Variable (Vercel, server-side) | Purpose |
+|-------------------------------|---------|
+| `RESEND_API_KEY` | Enables the notification. Without it the email is skipped. |
+| `SIGNUP_NOTICE_FROM` | Verified sender, e.g. `SettleNG <notifications@yourdomain.com>`. Defaults to Resend's test sender, which only delivers to your own account address. |
+
+**Bot protection (optional, needs keys).** Put a Cloudflare Turnstile *secret* in Supabase and the
+matching *site key* in Vercel, and Supabase rejects sign-ups, sign-ins and reset requests that skip the
+challenge:
+
+```bash
+node scripts/supabase-auth-config.mjs --turnstile-secret=0x4AAAA...
+```
+
+```
+# Vercel environment
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAA...
+```
+
+With no site key the widget does not render and nothing else changes.
+
+Remaining dependence on email: **password reset**. There is no way around sending that link, so a
+throttled mailer still breaks "forgot password" until custom SMTP is configured below.
 
 ### Make confirmation email reliable (custom SMTP)
 
@@ -94,8 +139,9 @@ cannot be the sender for real users. So this step realistically means buying a c
 `noreply@yourdomain`. Some providers also let you verify a single sender address without a domain; check
 their current policy if you want to launch before buying one.
 
-Keep verification **on**. With working SMTP the flow is: sign up → email arrives in seconds → the link
-opens `/auth/confirm` → verified session → onboarding → dashboard.
+Email confirmation stays **off** by design (see "Registration without email confirmation"). Custom SMTP
+is still worth setting up: it is what makes password-reset links arrive, and the optional sign-up
+notification actually reach the person.
 
 ## 2. Create the tables (from your computer)
 

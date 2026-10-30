@@ -1,10 +1,11 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, MailCheck } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { Turnstile, captchaConfigured } from "@/components/auth/turnstile";
 import { ResendConfirmation } from "@/components/auth/resend-confirmation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
@@ -47,6 +48,9 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaRound, setCaptchaRound] = useState(0);
+  const handleCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   const linkMessage = authError
     ? (LINK_ERRORS[authError] ?? "That sign-in link didn't work. Please request a new one below.")
@@ -55,13 +59,23 @@ function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (captchaConfigured() && !captchaToken) {
+      toast.error("Please finish the security check first.");
+      return;
+    }
     setBusy(true);
     setNeedsConfirm(false);
     try {
-      const { error } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
+      const { error } = await supabase().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
+      });
       if (error) {
         if (error.code === "email_not_confirmed") setNeedsConfirm(true);
         toast.error(messageFor(error.code ?? "", error.message));
+        setCaptchaToken(null);
+        setCaptchaRound((r) => r + 1);
         return;
       }
       router.replace(next);
@@ -138,6 +152,7 @@ function LoginForm() {
             Forgot your password?
           </Link>
         </div>
+        <Turnstile key={captchaRound} onToken={handleCaptcha} />
         <Button type="submit" size="lg" className="w-full" loading={busy}>
           Log in
         </Button>
