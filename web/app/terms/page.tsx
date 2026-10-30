@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Terms of Service",
   description:
     "The terms for using SettleNG: what the service is, what it is not, and what we each agree to.",
+  alternates: { canonical: "/terms" },
 };
 
 const SECTIONS: LegalSection[] = [

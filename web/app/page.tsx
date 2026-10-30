@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/marketing/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
+import { StructuredData } from "@/components/marketing/structured-data";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
   title: "SettleNG — Know where your money goes",
   description:
     "SettleNG is a free money tracker for Nigerian traders and small business owners: record sales and expenses, track customer debts, and see how your business is moving.",
+  alternates: { canonical: "/" },
 };
 
 const FEATURES = [
@@ -190,12 +192,8 @@ export default async function LandingPage({
 
   return (
     <>
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-panel focus:px-4 focus:py-2 focus:text-white"
-      >
-        Skip to content
-      </a>
+      {/* Skip link lives in the root layout so every page has one. */}
+      <StructuredData />
       <SiteHeader />
 
       <main id="main" className="flex-1">

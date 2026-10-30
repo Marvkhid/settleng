@@ -8,6 +8,9 @@ if (process.env.VERCEL && !process.env.NEXT_PUBLIC_API_URL) {
 }
 
 const securityHeaders = [
+  // HTTPS only. Vercel already redirects http -> https; this stops a browser from ever trying
+  // plain HTTP for a subresource on the way in.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

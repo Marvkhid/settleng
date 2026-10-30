@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "What SettleNG collects, where it is stored, which cookies it uses, and how to ask for your data.",
+  alternates: { canonical: "/privacy" },
 };
 
 const SECTIONS: LegalSection[] = [
@@ -49,7 +50,7 @@ const SECTIONS: LegalSection[] = [
       "Supabase — authentication (accounts, sign-in, password reset emails) and the PostgreSQL database that stores your records.",
       "Render — runs the application's API, which reads and writes those records.",
       "Vercel — serves the website you are looking at.",
-      "Supabase's email service — sends account confirmation and password-reset messages.",
+      "Supabase's email service, or a dedicated email provider (Resend) if one is configured — sends account confirmation and password-reset messages. Those messages only contain the link needed to confirm or reset; never your records.",
     ],
   },
   {
@@ -65,11 +66,12 @@ const SECTIONS: LegalSection[] = [
   {
     id: "cookies",
     heading: "Cookies and local storage",
-    body: "SettleNG uses only what is needed to work. There is no analytics product, no advertising network and no consent banner, because there is nothing optional to consent to.",
+    body: "SettleNG uses only what is needed to work. There is no advertising network and no cross-site tracking, and no consent banner, because nothing optional is switched on by default.",
     bullets: [
       "Essential cookies: set by Supabase Auth after you sign in, so the site knows who you are and keeps you signed in. Without them you cannot use your account.",
       "Local storage: a single value records whether you prefer light or dark appearance. It never leaves your device.",
-      "No advertising, analytics or cross-site tracking cookies are set by SettleNG.",
+      "No advertising or cross-site tracking cookies are set by SettleNG.",
+      "Optional measurement: if the owner has enabled Google Analytics (it is off unless an analytics ID is configured), only the page path is recorded. Advertising signals and personalised ads are disabled, and the browser's Do Not Track / Global Privacy Control signal stops it loading altogether. Your records, amounts and sign-in details are never sent to it.",
     ],
   },
   {

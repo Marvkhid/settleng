@@ -66,6 +66,37 @@ emailed confirmation and password-reset links send people back to your site.
    can turn **Confirm email** off; leave it on for production (users click a link before their first login).
 3. Note your **Project URL** and **anon / publishable key** (Project Settings > API) — the website needs both.
 
+### Make confirmation email reliable (custom SMTP)
+
+Out of the box Supabase sends auth email from its own shared mailer. It is explicitly meant for
+**testing**: the rate limit is a handful of messages per hour per project, and messages are frequently
+filtered as spam by Gmail and Outlook. A new user who never sees that email cannot finish signing up, so
+this — not the application code — is normally why "Create account" appears to do nothing.
+
+Fix it once, in Supabase **Project Settings > Auth > SMTP Settings** (or **Authentication > Emails > SMTP**):
+
+| Field | Value |
+|-------|-------|
+| Host | the provider's SMTP host, e.g. `smtp.resend.com` |
+| Port | `587` (STARTTLS) or `465` (TLS) |
+| Username | provider-specific, e.g. `resend` |
+| Password | the provider's API key / SMTP password |
+| Sender email | an address on a domain you have verified with that provider |
+| Sender name | `SettleNG` |
+
+Then turn **off** "Use default SMTP" and send yourself a test from
+**Authentication > Emails**, or simply sign up once on the live site.
+
+Practical constraint: most providers (Resend, Postmark, SendGrid) require you to verify a **domain**
+before they will deliver to arbitrary recipients — a free mailbox address such as `@gmail.com` usually
+cannot be the sender for real users. So this step realistically means buying a cheap domain
+(e.g. `settleng.ng` or `settleng.com`), verifying it with the provider's DNS records, and sending from
+`noreply@yourdomain`. Some providers also let you verify a single sender address without a domain; check
+their current policy if you want to launch before buying one.
+
+Keep verification **on**. With working SMTP the flow is: sign up → email arrives in seconds → the link
+opens `/auth/confirm` → verified session → onboarding → dashboard.
+
 ## 2. Create the tables (from your computer)
 
 1. Copy `api/.env.example` to `api/.env` and paste your two connection strings into `DATABASE_URL` and `DIRECT_URL`.
@@ -221,6 +252,9 @@ Then do the human check on your phone: open the site, **sign up**, record a sale
 | `NEXT_PUBLIC_API_URL` | yes | Base URL of the API (no trailing slash, no `/api`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase anon / publishable key |
+| `NEXT_PUBLIC_SITE_URL` | optional | Public site address used for canonical URLs, Open Graph and the sitemap. Defaults to `https://settleng.vercel.app`; set it when you move to a custom domain. |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | optional | Search Console verification token. The meta tag is emitted only when this is set. |
+| `NEXT_PUBLIC_GA_ID` | optional | Google Analytics 4 measurement ID (`G-…`). Without it **no analytics script is loaded at all**. |
 
 ## Updating later
 
@@ -228,6 +262,61 @@ Push to GitHub. Vercel rebuilds the website and Render rebuilds the API (running
 Database migrations only move forward, so test them locally with `npm run dev` before pushing.
 
 **Rolling back a bad release:** in Vercel, open the previous deployment and choose to promote/rollback to it; in Render, redeploy the previous commit.
+
+## 7. Search, sharing and analytics
+
+This is already in the code — nothing has to be built to go live:
+
+| What | Where it comes from |
+|------|--------------------|
+| Per-page titles, descriptions, canonical URLs | each page's `metadata` (e.g. `app/about/page.tsx`) |
+| Open Graph + Twitter card, 1200×630 share image | `app/opengraph-image.tsx` (generated at build) |
+| Favicon (SVG), 180px Apple icon, web app manifest | `app/icon.svg`, `app/apple-icon.tsx`, `app/manifest.ts` |
+| `robots.txt` and `sitemap.xml` | `app/robots.ts`, `app/sitemap.ts` (public pages only; signed-in routes are disallowed) |
+| Structured data: Organization, WebSite, SoftwareApplication | `components/marketing/structured-data.tsx` (homepage) |
+| HTTPS + HSTS + security headers | Vercel, plus `next.config.ts` |
+| Skip-to-content link, one `h1` per page, labelled form fields | root layout and page components |
+
+Two things need your own accounts:
+
+1. **Google Search Console** — add `https://settleng.vercel.app` as a property. Choose the **HTML tag**
+   verification method, copy only the `content="…"` token into Vercel as
+   `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, redeploy, then press **Verify**. Submit
+   `https://settleng.vercel.app/sitemap.xml` under **Sitemaps**.
+2. **Google Analytics 4** — create a web data stream for the site, copy the `G-…` measurement ID into
+   Vercel as `NEXT_PUBLIC_GA_ID`, and redeploy. Until that variable exists, no analytics script is
+   requested at all (the privacy page says so, and it stays true).
+
+Do not expect rankings immediately: a new domain is normally crawled within days and ranked slowly.
+The technical groundwork above makes the site eligible; content and links decide the rest.
+
+## 8. Capacity: what works today and what changes as accounts grow
+
+These numbers are from the code in this repository, not estimates:
+
+| Area | Current behaviour |
+|------|------------------|
+| List endpoints | Paginated: `page` (from 1), `pageSize` 20 by default, maximum 100 (`api/src/common/pagination.ts`) |
+| Database indexes | 14 declared indexes/uniques, including `Transaction(businessId,date)`, `Transaction(businessId,type,date)`, `Invoice(businessId,dueDate)` and `Customer(businessId,name)` |
+| Rate limiting | 120 requests per minute per IP (`ThrottlerModule`, trusts the proxy hop in production) |
+| DB connections | Pool capped at 10 per API instance (`DATABASE_POOL_MAX`), behind Supabase's transaction pooler on 6543 |
+| Auth | Supabase JWT verified against JWKS on every request; no server-side session store to scale |
+| Tenant isolation | Every query is scoped by the signed-in user's own business on the server |
+
+What that means in practice, honestly:
+
+- **Single instance ceiling.** The API currently runs as one Render Node process. That comfortably
+  serves hundreds of daily users; it is not designed for thousands of concurrent ones. Going bigger means
+  a larger instance and `WEB_CONCURRENCY` above 1, or several instances: the API is stateless, so that is a
+  hosting change, not a code change.
+- **Connections are the first thing to break when you add instances.** Keep `DATABASE_POOL_MAX` at 3–5
+  per instance once you run more than two, so the pooler is not exhausted.
+- **Database size and backups.** Verify what your Supabase plan actually retains (point-in-time recovery is
+  a paid feature; free plans have limited backup retention). Take a manual dump before risky migrations.
+- **No error monitoring or uptime alerting is wired in.** This is the biggest operational gap: a suspended
+  service or a failed deploy currently goes unnoticed until a user reports it. Point an external uptime check
+  at `/api/health` and enable deploy-failure notifications in Render.
+- **Free plans sleep.** An idle Render instance takes 30–60 seconds to answer the first request.
 
 ## Security notes
 

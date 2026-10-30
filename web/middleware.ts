@@ -12,6 +12,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Run on everything except Next internals, static assets, the auth callback route (it sets its own
-  // session cookies) and files with an extension.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|auth/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?)$).*)"],
+  // session cookies), the generated metadata routes (icons, share image, sitemap, robots, manifest)
+  // and files with an extension. Those are fetched by crawlers and social bots, and there is no
+  // session to refresh for them.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|auth/|icon\\.svg|apple-icon|opengraph-image|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+  ],
 };

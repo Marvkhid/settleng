@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "Support & complaints",
   description:
     "Contact SettleNG about your account, a record, or anything that is not working. Email, phone and WhatsApp support.",
+  alternates: { canonical: "/support" },
 };
 
 const CHANNELS = [

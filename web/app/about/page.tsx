@@ -16,6 +16,13 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "Why SettleNG exists: a free record-keeping tool for Nigerian traders and small business owners, built by Marvel Adeniyi.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About SettleNG",
+    description:
+      "A free record book for Nigerian traders and small businesses, built by Marvel Adeniyi.",
+    url: "/about",
+  },
 };
 
 const PRINCIPLES = [
