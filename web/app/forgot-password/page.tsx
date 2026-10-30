@@ -7,6 +7,7 @@ import { Turnstile, captchaConfigured } from "@/components/auth/turnstile";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { supabase } from "@/lib/supabase/client";
+import { SITE_URL } from "@/lib/site";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -25,7 +26,7 @@ export default function ForgotPasswordPage() {
     setBusy(true);
     try {
       const { error } = await supabase().auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${SITE_URL}/reset-password`,
         ...(captchaToken ? { captchaToken } : {}),
       });
       if (error) {

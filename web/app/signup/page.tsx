@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { api } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase/client";
+import { SITE_URL } from "@/lib/site";
 
 /** Friendly, specific messages for the sign-up errors people actually hit. */
 function messageFor(code: string, fallback: string): string {
@@ -56,7 +57,9 @@ export default function SignupPage() {
           data: { full_name: fullName.trim(), business_name: businessName.trim() },
           // Only used when the project still requires confirmation; with mandatory verification off
           // there is nothing to click and this is never sent.
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/onboarding")}`,
+          // The public site URL, never window.location.origin: a link built on localhost is
+          // unusable for anyone reading the mail on a phone.
+          emailRedirectTo: `${SITE_URL}/auth/confirm?next=${encodeURIComponent("/onboarding")}`,
           ...(captchaToken ? { captchaToken } : {}),
         },
       });

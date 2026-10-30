@@ -61,12 +61,12 @@ function UploadPanel({ onImported }: { onImported: (id: string) => void }) {
   return (
     <section aria-labelledby="up-h" className="rounded-2xl border border-line bg-surface p-4 md:p-6">
       <h2 id="up-h" className="text-xl font-bold">Upload a statement</h2>
-      <p className="mt-1 text-slate">A CSV file with a date, an amount and (ideally) a description for each row.</p>
+      <p className="mt-1 text-slate">A CSV, TSV, .txt or Excel (.xlsx) file with a date, an amount and (ideally) a description for each row. PDF and Word statements are not read yet.</p>
       <a href={api.templateUrl()} download className="inline-flex min-h-11 items-center gap-1 font-semibold text-emerald-ink underline"><Download className="size-4" aria-hidden /> Download a sample file</a>
-      <input ref={input} id="csv-file" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+      <input ref={input} id="csv-file" type="file" accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
       {!file ? (
         <label htmlFor="csv-file" className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-paper px-4 text-center font-semibold hover:bg-sunken has-[:focus-visible]:outline">
-          <FileUp className="size-8 text-slate" aria-hidden /> Choose a CSV file <span className="text-sm font-normal text-slate">Up to 1 MB and 500 rows</span>
+          <FileUp className="size-8 text-slate" aria-hidden /> Choose a statement file <span className="text-sm font-normal text-slate">Up to 1 MB and 500 rows</span>
         </label>
       ) : (
         <p className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-sunken px-4 py-3"><span className="font-semibold">{file.name}</span><Button variant="ghost" size="sm" onClick={reset}>Choose another</Button></p>

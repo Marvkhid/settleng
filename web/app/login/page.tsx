@@ -78,6 +78,8 @@ function LoginForm() {
         setCaptchaRound((r) => r + 1);
         return;
       }
+      // Informational only, fired and forgotten: a mail failure must never keep anyone out.
+      void fetch("/api/login-notice", { method: "POST" }).catch(() => {});
       router.replace(next);
       router.refresh();
     } catch {

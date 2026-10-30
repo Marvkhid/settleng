@@ -4,6 +4,7 @@ import { CheckCircle2, MailPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { supabase } from "@/lib/supabase/client";
+import { SITE_URL } from "@/lib/site";
 
 const COOLDOWN_SECONDS = 60;
 
@@ -39,7 +40,7 @@ export function ResendConfirmation({ defaultEmail = "" }: { defaultEmail?: strin
         type: "signup",
         email: address,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/onboarding")}`,
+          emailRedirectTo: `${SITE_URL}/auth/confirm?next=${encodeURIComponent("/onboarding")}`,
         },
       });
       if (sendError) {

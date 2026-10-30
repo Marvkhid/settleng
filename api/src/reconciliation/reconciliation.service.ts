@@ -22,6 +22,7 @@ import {
   ParsedRow,
   SAMPLE_CSV,
 } from './statement-parser';
+import { workbookToCsv } from './spreadsheet';
 
 type AnalysedRow = ParsedRow & {
   matchStatus:
@@ -41,16 +42,61 @@ export class ReconciliationService {
     return { filename: 'settleng-sample-statement.csv', body: SAMPLE_CSV };
   }
 
-  private readFile(file: Express.Multer.File | undefined): string {
+  /**
+   * Returns the upload as delimited text. Spreadsheets are converted through the same pipeline as a
+   * CSV export, so preview, duplicate detection and the review step behave identically.
+   *
+   * Formats that cannot be read reliably (PDF, Word, the old binary .xls) are refused with an
+   * explanation instead of being decoded into figures that look real but are not.
+   */
+  private async readFile(
+    file: Express.Multer.File | undefined,
+  ): Promise<string> {
     if (!file)
-      throw new BadRequestException('Please choose a CSV file to upload.');
+      throw new BadRequestException(
+        'Please choose a statement file to upload.',
+      );
     if (file.size > MAX_FILE_BYTES)
       throw new BadRequestException(
         'That file is too large. Keep it under 1 MB.',
       );
-    if (!/\.csv$/i.test(file.originalname))
-      throw new BadRequestException('Please upload a .csv file.');
-    return file.buffer.toString('utf8');
+
+    const name = file.originalname;
+
+    if (/\.xlsx$/i.test(name)) {
+      try {
+        const csv = await workbookToCsv(file.buffer);
+        if (!csv.trim())
+          throw new BadRequestException(
+            'The first sheet of that spreadsheet is empty.',
+          );
+        return csv;
+      } catch (error) {
+        if (error instanceof BadRequestException) throw error;
+        throw new BadRequestException(
+          'That spreadsheet could not be read. Save it as .csv and upload that instead.',
+        );
+      }
+    }
+
+    if (/\.(csv|tsv|txt)$/i.test(name)) return file.buffer.toString('utf8');
+
+    if (/\.xls$/i.test(name))
+      throw new BadRequestException(
+        'Old .xls files are not supported. Open it in Excel and save it as .xlsx or .csv.',
+      );
+    if (/\.pdf$/i.test(name))
+      throw new BadRequestException(
+        'PDF statements are not read yet — text inside a PDF copy cannot be trusted to keep rows in order. Export the statement as CSV or .xlsx from your bank and upload that.',
+      );
+    if (/\.docx?$/i.test(name))
+      throw new BadRequestException(
+        'Word documents are not read. Upload the statement as CSV, TSV, .txt or .xlsx instead.',
+      );
+
+    throw new BadRequestException(
+      'Upload a .csv, .tsv, .txt or .xlsx statement.',
+    );
   }
 
   private parseMapping(raw?: string): Partial<ColumnMapping> | undefined {
@@ -159,7 +205,7 @@ export class ReconciliationService {
   /** Nothing is saved. Shows what would happen so the user can fix columns first. */
   async preview(file: Express.Multer.File | undefined, mappingRaw?: string) {
     const { parsed, rows } = await this.analyse(
-      this.readFile(file),
+      await this.readFile(file),
       this.parseMapping(mappingRaw),
     );
     return {
@@ -188,7 +234,7 @@ export class ReconciliationService {
   /** Re-checks the file on the server; the browser's preview is never trusted. */
   async save(file: Express.Multer.File | undefined, mappingRaw?: string) {
     const { parsed, rows } = await this.analyse(
-      this.readFile(file),
+      await this.readFile(file),
       this.parseMapping(mappingRaw),
     );
     if (parsed.problems.length)

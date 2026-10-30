@@ -145,7 +145,7 @@ export function parseStatement(
       headers,
       mapping: null,
       problems: [
-        'We could not read columns from this file. Check that it is a comma-separated CSV with a header row.',
+        'We could not read columns from this file. Check that it is a table (CSV, TSV or .txt) with a header row.',
       ],
       rows: [],
     };
