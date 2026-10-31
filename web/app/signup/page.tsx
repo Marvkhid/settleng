@@ -13,7 +13,9 @@ import { SITE_URL } from "@/lib/site";
 
 /** Friendly, specific messages for the sign-up errors people actually hit. */
 function messageFor(code: string, fallback: string): string {
-  if (code === "email_exists") return "An account with this email already exists. Try logging in.";
+  // Supabase answers a retried registration with user_already_exists; older projects used email_exists.
+  if (code === "email_exists" || code === "user_already_exists")
+    return "An account with this email already exists. Try logging in.";
   if (code === "weak_password") return "Please choose a password of at least 6 characters.";
   if (code === "email_address_invalid") return "That email address was rejected. Please check it and try again.";
   // Supabase rejects the whole sign-up with a 429 when its email sender is rate-limited, so no
