@@ -77,14 +77,15 @@ export default function SignupPage() {
         router.replace(`/login?email=${encodeURIComponent(email.trim())}`);
         return;
       }
-      // No session means mandatory email confirmation is still switched on at the provider. Rather
-      // than fake a sign-in, we say exactly that and offer a fresh link.
+      // SettleNG does not use confirmation emails, so a sign-up that comes back without a session
+      // means the project is still set to require one. Say that plainly instead of implying an
+      // email is on its way: nothing was sent, so there is no link to wait for.
       if (!data.session) {
         toast.error(
-          "Your account was created, but this project still requires an email confirmation link. Use the resend option to get one.",
+          "Your account was created, but we couldn't sign you in yet. Please try logging in; if that fails, contact support.",
           { duration: 9000 },
         );
-        router.replace(`/login?checkEmail=1&email=${encodeURIComponent(email.trim())}`);
+        router.replace(`/login?email=${encodeURIComponent(email.trim())}`);
         return;
       }
       // Informational only: it must never delay or block sign-in, so it is not awaited.

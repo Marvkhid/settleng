@@ -3,10 +3,9 @@ import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, MailCheck } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Turnstile, captchaConfigured } from "@/components/auth/turnstile";
-import { ResendConfirmation } from "@/components/auth/resend-confirmation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { supabase } from "@/lib/supabase/client";
@@ -23,7 +22,8 @@ const LINK_ERRORS: Record<string, string> = {
 
 function messageFor(code: string, fallback: string): string {
   if (code === "invalid_credentials") return "That email and password don't match. Please try again.";
-  if (code === "email_not_confirmed") return "This account still needs its email confirmed.";
+  if (code === "email_not_confirmed")
+    return "That email and password don't match, or this account isn't active yet. Please try again.";
   if (code === "over_request_rate_limit") return "Too many attempts. Please wait a minute and try again.";
   return fallback;
 }
@@ -41,21 +41,18 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
-  const checkEmail = params.get("checkEmail") === "1";
   const authError = params.get("authError");
   const emailParam = params.get("email") ?? "";
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [needsConfirm, setNeedsConfirm] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaRound, setCaptchaRound] = useState(0);
   const handleCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   const linkMessage = authError
-    ? (LINK_ERRORS[authError] ?? "That sign-in link didn't work. Please request a new one below.")
+    ? (LINK_ERRORS[authError] ?? "That sign-in link didn't work. Please request a new one.")
     : null;
-  const showResend = checkEmail || Boolean(authError) || needsConfirm;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,7 +61,6 @@ function LoginForm() {
       return;
     }
     setBusy(true);
-    setNeedsConfirm(false);
     try {
       const { error } = await supabase().auth.signInWithPassword({
         email: email.trim(),
@@ -72,7 +68,6 @@ function LoginForm() {
         ...(captchaToken ? { options: { captchaToken } } : {}),
       });
       if (error) {
-        if (error.code === "email_not_confirmed") setNeedsConfirm(true);
         toast.error(messageFor(error.code ?? "", error.message));
         setCaptchaToken(null);
         setCaptchaRound((r) => r + 1);
@@ -109,16 +104,10 @@ function LoginForm() {
             {linkMessage}
           </p>
           <p className="mt-1.5 text-ink-soft">
-            Send yourself a new link below, then open it once, straight after it arrives.
+            If you were resetting a password, request a fresh reset link from the “Forgot your
+            password?” page below.
           </p>
         </div>
-      )}
-
-      {checkEmail && !linkMessage && (
-        <p className="mb-5 flex items-start gap-2 rounded-xl border border-emerald/25 bg-emerald-wash p-3 text-sm font-medium text-emerald-ink">
-          <MailCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Account created. Open the confirmation link we emailed you, then log in here.
-        </p>
       )}
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
@@ -159,8 +148,6 @@ function LoginForm() {
           Log in
         </Button>
       </form>
-
-      {showResend && <ResendConfirmation defaultEmail={email} />}
     </AuthShell>
   );
 }
