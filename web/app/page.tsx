@@ -15,6 +15,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { Bell, FileUp, HandCoins, PieChart } from "lucide-react";
 import { Reveal } from "@/components/marketing/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { StructuredData } from "@/components/marketing/structured-data";
@@ -59,6 +60,34 @@ const FEATURES = [
     Icon: GitCompareArrows,
     title: "Match records",
     body: "Bring in a bank statement CSV, review the rows, and link payments to the right customer.",
+  },
+];
+
+const EXTRA_FEATURES = [
+  {
+    Icon: Bell,
+    title: "Smart debt reminders",
+    body: "Turn on automatic emails for any unpaid debt. Choose 8am, 1pm, 6pm or your own times — SettleNG emails you, never the debtor.",
+  },
+  {
+    Icon: HandCoins,
+    title: "Follow up politely",
+    body: "See every balance, part payment and due date, with a shareable payment link — so chasing money never feels awkward.",
+  },
+  {
+    Icon: FileUp,
+    title: "Import a bank statement",
+    body: "Upload a CSV, Excel or PDF statement. Every row is read, duplicates are blocked, and the totals must add up before they count.",
+  },
+  {
+    Icon: Users,
+    title: "Personal and business",
+    body: "Keep your own money and the business separate, and invite the people who help you run it.",
+  },
+  {
+    Icon: PieChart,
+    title: "Analytics that add up",
+    body: "Cash flow, spending by category, debt ageing and who owes you most — calculated from your records, never guessed.",
   },
 ];
 
@@ -381,7 +410,7 @@ export default async function LandingPage({
             </Reveal>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((f, i) => (
+              {[...FEATURES, ...EXTRA_FEATURES].map((f, i) => (
                 <Reveal key={f.title} delay={i * 60}>
                   <article className="group h-full rounded-3xl border border-line bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald/35 hover:shadow-depth">
                     <span className="flex size-11 items-center justify-center rounded-2xl bg-emerald-wash text-emerald-ink transition-colors group-hover:bg-emerald group-hover:text-on-emerald">
@@ -597,6 +626,40 @@ export default async function LandingPage({
                     </li>
                   ))}
                 </ul>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ---------- Guided tour ---------- */}
+        <section aria-labelledby="guide">
+          <div className="mx-auto w-full max-w-6xl px-5 pb-4 md:px-8">
+            <Reveal>
+              <div className="grid items-center gap-0 overflow-hidden rounded-3xl border border-line bg-surface md:grid-cols-[1fr_0.8fr]">
+                <div className="p-6 md:p-9">
+                  <p className="eyebrow">
+                    <span aria-hidden className="h-px w-6 bg-emerald" /> New here?
+                  </p>
+                  <h2 id="guide" className="mt-3 text-2xl font-extrabold leading-tight md:text-3xl">
+                    Want to know what SettleNG is all about?
+                  </h2>
+                  <p className="mt-3 max-w-md text-ink-soft">
+                    Take the five-minute guided tour: what each screen does, where to find it, and the
+                    four things you will do most days.
+                  </p>
+                  <Link href="/guide" className={cn(buttonVariants({ size: "lg" }), "mt-5")}>
+                    Take the guided tour <ArrowRight className="size-5" aria-hidden />
+                  </Link>
+                </div>
+                <div className="relative h-48 md:h-full md:min-h-[14rem]">
+                  <Image
+                    src="/images/cta-trader.jpg"
+                    alt="A Nigerian trader smiling at her stall"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 380px"
+                    className="object-cover"
+                  />
+                </div>
               </div>
             </Reveal>
           </div>

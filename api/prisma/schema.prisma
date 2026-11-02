@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -45,22 +45,97 @@ enum MatchStatus {
   MATCHED
 }
 
+/// A workspace is either a personal finance space or a business. Personal workspaces have no
+/// customers or invoices; business workspaces keep the original behaviour.
+enum WorkspaceKind {
+  PERSONAL
+  BUSINESS
+}
+
+enum MembershipRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  REMOVED
+}
+
+enum DebtDirection {
+  OWED_TO_ME
+  I_OWE
+}
+
+enum DebtOverride {
+  DISPUTED
+  WRITTEN_OFF
+  CANCELLED
+}
+
+enum ReminderChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum ReminderStatus {
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
 model Business {
-  id        String   @id @default(cuid())
-  /// The Supabase user id that owns this business (one business per owner).
-  ownerId   String   @unique
+  id        String        @id @default(cuid())
+  /// The Supabase user id that created this workspace. Access is granted through
+  /// OrganisationMembership, so a user may own a personal and a business workspace.
+  ownerId   String
   name      String
-  currency  String   @default("NGN")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  currency  String        @default("NGN")
+  kind      WorkspaceKind @default(BUSINESS)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   customers             Customer[]
   invoices              Invoice[]
   transactions          Transaction[]
   reconciliationImports ReconciliationImport[]
   auditEvents           AuditEvent[]
+  memberships           OrganisationMembership[]
+  debts                 Debt[]
+  documents             SupportingDocument[]
+  debtReminders         DebtReminder[]
 
   @@index([ownerId])
+}
+
+/// Access to a workspace. One row per member; the owner always has a row with role OWNER.
+/// Invitations start as INVITED with no userId yet and are activated on the invitee's next sign-in.
+model OrganisationMembership {
+  id           String           @id @default(cuid())
+  workspaceId  String
+  userId       String?
+  invitedEmail String?
+  role         MembershipRole   @default(STAFF)
+  status       MembershipStatus @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  workspace Business @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@index([invitedEmail])
 }
 
 /// Per-user profile. `userId` is the Supabase auth user id; `fullName` comes from sign-up metadata.
@@ -88,6 +163,7 @@ model Customer {
   business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
   invoices     Invoice[]
   transactions Transaction[]
+  debts        Debt[]
 
   @@index([businessId, name])
 }
@@ -104,11 +180,11 @@ model Invoice {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  business         Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  customer         Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  items            InvoiceItem[]
-  payments         InvoicePayment[]
-  importedMatches  ImportedTransaction[]
+  business        Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer        Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items           InvoiceItem[]
+  payments        InvoicePayment[]
+  importedMatches ImportedTransaction[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId, dueDate])
@@ -146,26 +222,26 @@ model InvoicePayment {
 }
 
 model Transaction {
-  id                     String            @id @default(cuid())
-  businessId             String
-  customerId             String?
-  type                   TransactionType
-  source                 TransactionSource @default(MANUAL)
-  paymentMethod          PaymentMethod?
-  amount                 Decimal           @db.Decimal(14, 2)
-  category               String
-  date                   DateTime          @db.Date
-  description            String?
-  reference              String?
-  invoicePaymentId       String?           @unique
-  importedTransactionId  String?           @unique
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  id                    String            @id @default(cuid())
+  businessId            String
+  customerId            String?
+  type                  TransactionType
+  source                TransactionSource @default(MANUAL)
+  paymentMethod         PaymentMethod?
+  amount                Decimal           @db.Decimal(14, 2)
+  category              String
+  date                  DateTime          @db.Date
+  description           String?
+  reference             String?
+  invoicePaymentId      String?           @unique
+  importedTransactionId String?           @unique
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
-  business            Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  customer            Customer?             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  invoicePayment      InvoicePayment?       @relation(fields: [invoicePaymentId], references: [id], onDelete: Restrict)
-  importedTransaction ImportedTransaction?  @relation(fields: [importedTransactionId], references: [id], onDelete: Restrict)
+  business            Business             @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer            Customer?            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoicePayment      InvoicePayment?      @relation(fields: [invoicePaymentId], references: [id], onDelete: Restrict)
+  importedTransaction ImportedTransaction? @relation(fields: [importedTransactionId], references: [id], onDelete: Restrict)
 
   @@index([businessId, date])
   @@index([businessId, type, date])
@@ -173,13 +249,16 @@ model Transaction {
 }
 
 model ReconciliationImport {
-  id         String       @id @default(cuid())
-  businessId String
-  filename   String
-  status     ImportStatus @default(PENDING_REVIEW)
-  rowCount   Int
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  businessId     String
+  filename       String
+  status         ImportStatus @default(PENDING_REVIEW)
+  rowCount       Int
+  /// Opening and closing balances printed inside the uploaded file, to check its arithmetic.
+  openingBalance Decimal?     @db.Decimal(14, 2)
+  closingBalance Decimal?     @db.Decimal(14, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   business Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
   rows     ImportedTransaction[]
@@ -188,12 +267,12 @@ model ReconciliationImport {
 }
 
 model ImportedTransaction {
-  id                   String          @id @default(cuid())
+  id                   String           @id @default(cuid())
   importId             String
   externalReference    String?
-  date                 DateTime?       @db.Date
+  date                 DateTime?        @db.Date
   description          String?
-  amount               Decimal?        @db.Decimal(14, 2)
+  amount               Decimal?         @db.Decimal(14, 2)
   direction            ImportDirection?
   matchStatus          MatchStatus
   matchedInvoiceId     String?
@@ -211,15 +290,227 @@ model ImportedTransaction {
 }
 
 model AuditEvent {
-  id         String   @id @default(cuid())
-  businessId String
-  action     String
-  entityType String
-  entityId   String?
-  summary    String
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  businessId  String
+  /// The Supabase user who performed the action. Null for rows written before multi-user support.
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  summary     String
+  createdAt   DateTime @default(now())
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
 
   @@index([businessId, createdAt])
+}
+
+/// A debt owed to the workspace (a receivable) or by the workspace (a payable).
+/// The balance is never stored: it is always principal minus the sum of repayments.
+model Debt {
+  id                String        @id @default(cuid())
+  workspaceId       String
+  /// Optional link to an existing customer; the counterparty fields are always stored so a debt can
+  /// exist for someone who is not in the address book.
+  customerId        String?
+  counterpartyName  String
+  counterpartyPhone String?
+  counterpartyEmail String?
+  direction         DebtDirection
+  principal         Decimal       @db.Decimal(14, 2)
+  currency          String        @default("NGN")
+  description       String
+  incurredOn        DateTime      @db.Date
+  dueOn             DateTime?     @db.Date
+  terms             String?
+  /// Disputed, written off or cancelled debts keep their money history but drop out of live totals.
+  override          DebtOverride?
+  assignedToUserId  String?
+  createdByUserId   String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  workspace       Business             @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  customer        Customer?            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  repayments      DebtRepayment[]
+  paymentRequests PaymentRequest[]
+  reminders       Reminder[]
+  documents       SupportingDocument[]
+  activities      RecoveryActivity[]
+  reminderConfig  DebtReminder?
+
+  @@index([workspaceId, dueOn])
+  @@index([workspaceId, direction])
+  @@index([workspaceId, assignedToUserId])
+  @@index([customerId])
+}
+
+model DebtRepayment {
+  id               String        @id @default(cuid())
+  debtId           String
+  amount           Decimal       @db.Decimal(14, 2)
+  paidOn           DateTime      @db.Date
+  method           PaymentMethod
+  reference        String?
+  note             String?
+  recordedByUserId String
+  createdAt        DateTime      @default(now())
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Restrict)
+
+  // One receipt reference can only be recorded once for a debt (NULLs are not constrained).
+  @@unique([debtId, reference])
+  @@index([debtId, paidOn])
+}
+
+/// A shareable, revocable link that lets a debtor see one debt's balance and how to pay.
+/// Only the SHA-256 hash of the token is stored, so a database leak cannot expose live links.
+model PaymentRequest {
+  id              String    @id @default(cuid())
+  debtId          String
+  tokenHash       String    @unique
+  tokenPrefix     String
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  createdByUserId String
+  viewCount       Int       @default(0)
+  lastViewedAt    DateTime?
+  createdAt       DateTime  @default(now())
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId])
+}
+
+model Reminder {
+  id              String          @id @default(cuid())
+  debtId          String
+  channel         ReminderChannel
+  templateKey     String          @default("friendly")
+  scheduledFor    DateTime
+  status          ReminderStatus  @default(SCHEDULED)
+  sentAt          DateTime?
+  attempts        Int             @default(0)
+  lastError       String?
+  createdByUserId String
+  createdAt       DateTime        @default(now())
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledFor])
+  @@index([debtId])
+}
+
+/// Append-only record of what a messaging provider actually answered. Never updated.
+model NotificationLog {
+  id                String             @id @default(cuid())
+  workspaceId       String
+  debtId            String
+  reminderId        String?
+  channel           ReminderChannel
+  provider          String
+  providerMessageId String?
+  status            NotificationStatus
+  errorCode         String?
+  createdAt         DateTime           @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([debtId, createdAt])
+}
+
+model RecoveryActivity {
+  id          String   @id @default(cuid())
+  debtId      String
+  actorUserId String
+  kind        String
+  summary     String
+  createdAt   DateTime @default(now())
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId, createdAt])
+}
+
+/// Evidence attached to a debt. Bytes live in a private object bucket; only the key is stored here.
+model SupportingDocument {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  debtId           String?
+  storageKey       String   @unique
+  filename         String
+  mime             String
+  sizeBytes        Int
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  workspace Business @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  debt      Debt?    @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([debtId])
+}
+
+enum ReminderFrequency {
+  ONCE_DAILY
+  TWICE_DAILY
+  THREE_TIMES_DAILY
+  CUSTOM
+}
+
+enum SmartDeliveryStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// Per-debt automatic reminder settings. The email always goes to the workspace owner, never to the
+/// debtor: SettleNG nudges the person who is owed money, it never chases the person who owes it.
+model DebtReminder {
+  id           String            @id @default(cuid())
+  debtId       String            @unique
+  workspaceId  String
+  ownerUserId  String
+  email        String
+  enabled      Boolean           @default(true)
+  paused       Boolean           @default(false)
+  frequency    ReminderFrequency @default(THREE_TIMES_DAILY)
+  /// Local wall-clock times (HH:MM) in this timezone, e.g. 08:00.
+  times        String[]
+  timezone     String            @default("Africa/Lagos")
+  nextRunAt    DateTime?
+  lastSentAt   DateTime?
+  lastError    String?
+  failureCount Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  debt       Debt                   @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  workspace  Business               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, paused, nextRunAt])
+  @@index([workspaceId])
+}
+
+/// One row per delivered (or refused) reminder email.  is unique, which is what makes
+/// an overlapping scheduler run or a server restart unable to send the same window twice.
+model DebtReminderDelivery {
+  id                String              @id @default(cuid())
+  workspaceId       String
+  ownerUserId       String
+  email             String
+  windowKey         String              @unique
+  slot              DateTime
+  debtCount         Int
+  totalOutstanding  Decimal             @db.Decimal(14, 2)
+  debtIds           String[]
+  subject           String
+  status            SmartDeliveryStatus
+  provider          String
+  providerMessageId String?
+  errorCode         String?
+  attempts          Int                 @default(1)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([workspaceId, createdAt])
 }

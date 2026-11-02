@@ -241,7 +241,7 @@ describe('business profile', () => {
     expect(
       (await as(tokenA).get('/auth/me').expect(200)).body.business.name,
     ).toBe('Marvel Stores NG');
-    const row = await prisma.business.findUniqueOrThrow({
+    const row = await prisma.business.findFirstOrThrow({
       where: { ownerId: OWNER_A },
     });
     expect(row.name).toBe('Marvel Stores NG');
@@ -1066,7 +1066,7 @@ describe('CSV reconciliation', () => {
 
 describe('account deletion', () => {
   it("deletes all of the account's data, even after a CSV match was confirmed, and leaves other tenants intact", async () => {
-    const business = await prisma.business.findUniqueOrThrow({
+    const business = await prisma.business.findFirstOrThrow({
       where: { ownerId: OWNER_B },
     });
     const customer = await newCustomer('Deletable customer', tokenB);

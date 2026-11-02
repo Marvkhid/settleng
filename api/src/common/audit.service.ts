@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
+import { currentUserId } from '../auth/tenant-context';
 import { requireBusinessId } from './business';
 
 export interface AuditInput {
@@ -16,6 +17,7 @@ export class AuditService {
     return db.auditEvent.create({
       data: {
         businessId: requireBusinessId(),
+        actorUserId: currentUserId(),
         action: e.action,
         entityType: e.entityType,
         entityId: e.entityId ?? null,

@@ -1,0 +1,70 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 4164 >>
+stream
+BT /F1 9 Tf 1 0 0 1 40 800 Tm (SETTLE TEST BANK - STATEMENT OF ACCOUNT) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 782 Tm (Account: 0123456789   Period: 01/10/2026 to 31/10/2026) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 764 Tm () Tj ET
+BT /F1 9 Tf 1 0 0 1 40 746 Tm (01/10/2026  Opening balance                                 250000.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 728 Tm (01/10/2026  TRF1001 Transfer from Mama Nkechi Stores        52000.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 710 Tm (01/10/2026  POS2001 POS purchase - Total Fuel Station       12000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 692 Tm (02/10/2026  POS1002 POS settlement Batch 4412               18500.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 674 Tm (02/10/2026  TRF2002 Transfer to Lagos Water Corporation     4500.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 656 Tm (03/10/2026  SUB2003 Netflix subscription                    4400.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 638 Tm (04/10/2026  ATM2004 ATM withdrawal Ikeja                    20000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 620 Tm (05/10/2026  DEP1003 Deposit cash at Ikeja branch            40000.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 602 Tm (06/10/2026  TRF2005 Transfer to Fabric Supplier Ltd         120000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 584 Tm (06/10/2026  AIR2006 Airtime top-up MTN                      2000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 566 Tm (07/10/2026  TRF1004 Transfer from Adaeze Textiles           96500.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 548 Tm (08/10/2026  BIL2007 EKEDC electricity bill                  15750.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 530 Tm (09/10/2026  TRF1005 Transfer from Emeka Motors              33750.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 512 Tm (10/10/2026  POS2008 POS purchase - Office supplies          9300.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 494 Tm (11/10/2026  TRF2009 Transfer to Staff salaries              85000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 476 Tm (12/10/2026  POS1006 POS settlement Batch 4471               27300.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 458 Tm (13/10/2026  SUB2010 DSTV subscription                       8600.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 440 Tm (14/10/2026  TRF2011 Transfer to Shop rent                   60000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 422 Tm (15/10/2026  TRF1007 Transfer from Chidi Okonkwo             150000.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 404 Tm (16/10/2026  CHG2012 Bank charges - SMS alert                1200.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 386 Tm (17/10/2026  POS2013 POS purchase - Diesel                   24500.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 368 Tm (18/10/2026  ATM2014 ATM withdrawal Opebi                    15000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 350 Tm (19/10/2026  CHQ1008 Deposit cheque 012345                   62000.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 332 Tm (20/10/2026  TRF2015 Transfer to Transport services          7800.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 314 Tm (21/10/2026  AIR2016 Airtime top-up Airtel                   1500.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 296 Tm (22/10/2026  TRF2017 Transfer to Packaging Ltd               18900.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 278 Tm (23/10/2026  TRF1009 Transfer from Mama Nkechi Stores        88200.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 260 Tm (24/10/2026  POS2018 POS purchase - Generator repairs        11250.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 242 Tm (25/10/2026  TRF2019 Transfer to Insurance premium           22000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 224 Tm (26/10/2026  ATM2020 ATM withdrawal Surulere                 10000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 206 Tm (27/10/2026  POS1010 POS settlement Batch 4550               31450.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 188 Tm (28/10/2026  TRF2021 Transfer to Supplier - Bola Fabrics     64000.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 170 Tm (29/10/2026  CHG2022 Bank charges - maintenance              900.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 152 Tm (30/10/2026  TRF1011 Transfer from Bola Furniture            45000.00 CR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 134 Tm (31/10/2026  TRF2023 Transfer to Adaeze Textiles refund      12500.00 DR) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 116 Tm (31/10/2026  Closing balance                                 363600.00 CR) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000004456 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+4526
+%%EOF

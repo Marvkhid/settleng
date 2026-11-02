@@ -1,0 +1,37 @@
+Date,Description,Amount,Direction,Reference
+2026-10-01,Opening balance,250000.00,,BAL-OPEN
+2026-10-01,Transfer from Mama Nkechi Stores,52000.00,credit,TRF1001
+2026-10-01,POS purchase - Total Fuel Station,12000.00,debit,POS2001
+2026-10-02,POS settlement Batch 4412,18500.00,credit,POS1002
+2026-10-02,Transfer to Lagos Water Corporation,4500.00,debit,TRF2002
+2026-10-03,Netflix subscription,4400.00,debit,SUB2003
+2026-10-04,ATM withdrawal Ikeja,20000.00,debit,ATM2004
+2026-10-05,Deposit cash at Ikeja branch,40000.00,credit,DEP1003
+2026-10-06,Transfer to Fabric Supplier Ltd,120000.00,debit,TRF2005
+2026-10-06,Airtime top-up MTN,2000.00,debit,AIR2006
+2026-10-07,Transfer from Adaeze Textiles,96500.00,credit,TRF1004
+2026-10-08,EKEDC electricity bill,15750.00,debit,BIL2007
+2026-10-09,Transfer from Emeka Motors,33750.00,credit,TRF1005
+2026-10-10,POS purchase - Office supplies,9300.00,debit,POS2008
+2026-10-11,Transfer to Staff salaries,85000.00,debit,TRF2009
+2026-10-12,POS settlement Batch 4471,27300.00,credit,POS1006
+2026-10-13,DSTV subscription,8600.00,debit,SUB2010
+2026-10-14,Transfer to Shop rent,60000.00,debit,TRF2011
+2026-10-15,Transfer from Chidi Okonkwo,150000.00,credit,TRF1007
+2026-10-16,Bank charges - SMS alert,1200.00,debit,CHG2012
+2026-10-17,POS purchase - Diesel,24500.00,debit,POS2013
+2026-10-18,ATM withdrawal Opebi,15000.00,debit,ATM2014
+2026-10-19,Deposit cheque 012345,62000.00,credit,CHQ1008
+2026-10-20,Transfer to Transport services,7800.00,debit,TRF2015
+2026-10-21,Airtime top-up Airtel,1500.00,debit,AIR2016
+2026-10-22,Transfer to Packaging Ltd,18900.00,debit,TRF2017
+2026-10-23,Transfer from Mama Nkechi Stores,88200.00,credit,TRF1009
+2026-10-24,POS purchase - Generator repairs,11250.00,debit,POS2018
+2026-10-25,Transfer to Insurance premium,22000.00,debit,TRF2019
+2026-10-26,ATM withdrawal Surulere,10000.00,debit,ATM2020
+2026-10-27,POS settlement Batch 4550,31450.00,credit,POS1010
+2026-10-28,Transfer to Supplier - Bola Fabrics,64000.00,debit,TRF2021
+2026-10-29,Bank charges - maintenance,900.00,debit,CHG2022
+2026-10-30,Transfer from Bola Furniture,45000.00,credit,TRF1011
+2026-10-31,Transfer to Adaeze Textiles refund,12500.00,debit,TRF2023
+2026-10-31,Closing balance,363600.00,,BAL-CLOSE

@@ -10,9 +10,11 @@ import { isoDate, todayInLagos, toDbDate } from '../common/dates';
 import { D, money } from '../common/money';
 import { computeInvoice, invoiceInclude } from '../invoices/invoice-view';
 import { PaymentsService } from '../payments/payments.service';
+import Decimal from 'decimal.js';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { suggestMatches } from './matcher';
+import { pdfToStatementCsv } from './pdf-text';
 import {
   ColumnMapping,
   duplicateKey,
@@ -85,10 +87,14 @@ export class ReconciliationService {
       throw new BadRequestException(
         'Old .xls files are not supported. Open it in Excel and save it as .xlsx or .csv.',
       );
-    if (/\.pdf$/i.test(name))
-      throw new BadRequestException(
-        'PDF statements are not read yet — text inside a PDF copy cannot be trusted to keep rows in order. Export the statement as CSV or .xlsx from your bank and upload that.',
-      );
+    if (/\.pdf$/i.test(name)) {
+      const { csv, rows } = pdfToStatementCsv(file.buffer);
+      if (rows === 0)
+        throw new BadRequestException(
+          'We could not find any transactions in that PDF. Scanned or image-only statements contain no readable text — export the statement as CSV or .xlsx from your bank instead.',
+        );
+      return csv;
+    }
     if (/\.docx?$/i.test(name))
       throw new BadRequestException(
         'Word documents are not read. Upload the statement as CSV, TSV, .txt or .xlsx instead.',
@@ -253,6 +259,8 @@ export class ReconciliationService {
           businessId: requireBusinessId(),
           filename: file!.originalname.slice(0, 200),
           rowCount: rows.length,
+          openingBalance: parsed.balances.openingBalance,
+          closingBalance: parsed.balances.closingBalance,
           status: rows.some((r) => r.matchStatus === 'SUGGESTED_MATCH')
             ? 'PENDING_REVIEW'
             : 'COMPLETED',
@@ -286,6 +294,17 @@ export class ReconciliationService {
       rowCount: imp.rowCount,
       status: imp.status,
       counts: this.counts(rows),
+      statement: {
+        ...this.fileTotals(
+          rows.map((r) => ({
+            amount: r.amount ? new Prisma.Decimal(r.amount) : null,
+            direction: r.direction,
+            matchStatus: r.matchStatus,
+          })),
+        ),
+        openingBalance: parsed.balances.openingBalance,
+        closingBalance: parsed.balances.closingBalance,
+      },
     };
   }
 
@@ -347,6 +366,12 @@ export class ReconciliationService {
       status: imp.status,
       rowCount: imp.rowCount,
       createdAt: imp.createdAt.toISOString(),
+      statement: {
+        ...this.fileTotals(imp.rows),
+        openingBalance: imp.openingBalance ? money(D(imp.openingBalance)) : null,
+        closingBalance: imp.closingBalance ? money(D(imp.closingBalance)) : null,
+        reconciles: this.fileReconciles(imp.rows, imp.openingBalance, imp.closingBalance),
+      },
       notice:
         'These rows come from a file you uploaded. SettleNG has not verified them with any bank.',
       rows: imp.rows.map((r) => ({
@@ -367,6 +392,46 @@ export class ReconciliationService {
           : null,
       })),
     };
+  }
+
+  /**
+   * What the uploaded file adds up to. Credits and debits come only from rows that were read
+   * successfully, so an unreadable row can never inflate the totals.
+   */
+  private fileTotals(
+    rows: {
+      amount: Prisma.Decimal | null;
+      direction: 'IN' | 'OUT' | null;
+      matchStatus: string;
+    }[],
+  ) {
+    let credits = new Decimal(0);
+    let debits = new Decimal(0);
+    for (const r of rows) {
+      if (!r.amount) continue;
+      if (r.matchStatus === 'INVALID' || r.matchStatus === 'DUPLICATE') continue;
+      if (r.direction === 'IN') credits = credits.plus(D(r.amount));
+      else if (r.direction === 'OUT') debits = debits.plus(D(r.amount));
+    }
+    return {
+      credits: money(credits),
+      debits: money(debits),
+      net: money(credits.minus(debits)),
+    };
+  }
+
+  /** Does opening + credits - debits equal the closing balance the file states? */
+  private fileReconciles(
+    rows: { amount: Prisma.Decimal | null; direction: 'IN' | 'OUT' | null; matchStatus: string }[],
+    opening: Prisma.Decimal | null,
+    closing: Prisma.Decimal | null,
+  ): boolean | null {
+    if (!opening || !closing) return null;
+    const totals = this.fileTotals(rows);
+    return D(opening)
+      .plus(D(totals.credits))
+      .minus(D(totals.debits))
+      .equals(D(closing));
   }
 
   private async syncImportStatus(

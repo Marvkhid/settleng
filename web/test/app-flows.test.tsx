@@ -62,6 +62,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 vi.mock("@/lib/api-client", () => ({
+  setActiveWorkspace: vi.fn(),
   api: flowApi(),
   ApiError: class ApiError extends Error {
     status: number;

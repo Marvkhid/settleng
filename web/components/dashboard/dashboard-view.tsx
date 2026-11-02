@@ -155,6 +155,38 @@ function Owing({ d }: { d: Dashboard }) {
   );
 }
 
+function Statement({ d }: { d: Dashboard }) {
+  const s = d.statement;
+  if (!s || s.importCount === 0) return null;
+  const figures: [string, string][] = [
+    ["Money in (credits)", formatNaira(s.credits)],
+    ["Money out (debits)", formatNaira(s.debits)],
+    ["Net movement", formatNaira(s.net)],
+  ];
+  return (
+    <section aria-labelledby="stmt-h" className="rounded-2xl border border-line bg-surface p-4 md:p-6">
+      <h2 id="stmt-h" className="text-xl font-bold">From your bank statement</h2>
+      <p className="mt-1 text-slate">
+        {s.rowCount} rows from your most recent upload ({s.importCount} in total).
+      </p>
+      <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+        {figures.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-sm text-slate">{label}</dt>
+            <dd className="figure tnum text-lg font-bold">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {(s.openingBalance || s.closingBalance) && (
+        <p className="mt-3 text-sm text-slate">
+          Opening {s.openingBalance ? formatNaira(s.openingBalance) : "not stated"} to closing{" "}
+          {s.closingBalance ? formatNaira(s.closingBalance) : "not stated"}.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ActivityRow({ a, today }: { a: ActivityItem; today: string }) {
   const income = a.sign === "+";
   const sub = [friendlyDate(a.date, today), a.customerName ?? a.category].filter(Boolean).join(" · ");
@@ -276,6 +308,7 @@ export function DashboardView() {
           <Hero d={q.data} />
           <QuickActions />
           <PerformanceChart />
+          <Statement d={q.data} />
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <Owing d={q.data} />
             <Activity d={q.data} />

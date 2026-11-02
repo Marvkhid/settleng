@@ -6,12 +6,16 @@ import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 import { CustomersModule } from './customers/customers.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { PaymentsModule } from './payments/payments.module';
 import { TransactionsModule } from './transactions/transactions.module';
+import { DebtsModule } from './debts/debts.module';
+import { RecoveryModule } from './recovery/recovery.module';
 import { ReportsModule } from './reports/reports.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { DebtRemindersModule } from './debt-reminders/debt-reminders.module';
 import { AuditController } from './audit/audit.controller';
 
 // Jest sets NODE_ENV=test. Tests must never inherit a developer's api/.env (it would point the
@@ -29,12 +33,16 @@ const isTest = process.env.NODE_ENV === 'test';
     PrismaModule,
     AuthModule,
     CommonModule,
+    WorkspacesModule,
     CustomersModule,
     InvoicesModule,
     PaymentsModule,
     TransactionsModule,
+    DebtsModule,
+    RecoveryModule,
     ReportsModule,
     ReconciliationModule,
+    DebtRemindersModule,
   ],
   controllers: [HealthController, AuditController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

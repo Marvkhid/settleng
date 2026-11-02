@@ -24,11 +24,16 @@ export interface ParsedRow {
   status: 'VALID' | 'INVALID' | 'DUPLICATE';
   note: string | null;
 }
+export interface StatementBalances {
+  openingBalance: string | null;
+  closingBalance: string | null;
+}
 export interface ParseResult {
   headers: string[];
   mapping: ColumnMapping | null;
   problems: string[];
   rows: ParsedRow[];
+  balances: StatementBalances;
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -127,11 +132,15 @@ const OUT_WORDS = [
   'moneyout',
 ];
 
+/** Rows that only restate the account balance are not transactions; they describe the file. */
+const BALANCE_ROW = /^(opening|closing|available|ledger)\s+balance\b/i;
+
 export function parseStatement(
   text: string,
   today: string,
   overrides?: Partial<ColumnMapping>,
 ): ParseResult {
+  const empty: StatementBalances = { openingBalance: null, closingBalance: null };
   const clean = text.replace(/^\uFEFF/, '');
   const parsed = Papa.parse<Record<string, string>>(clean, {
     header: true,
@@ -148,6 +157,7 @@ export function parseStatement(
         'We could not read columns from this file. Check that it is a table (CSV, TSV or .txt) with a header row.',
       ],
       rows: [],
+      balances: empty,
     };
   if (parsed.data.length === 0)
     return {
@@ -155,6 +165,7 @@ export function parseStatement(
       mapping: null,
       problems: ['This file has no data rows.'],
       rows: [],
+      balances: empty,
     };
   if (parsed.data.length > MAX_ROWS)
     return {
@@ -164,6 +175,7 @@ export function parseStatement(
         `This file has more than ${MAX_ROWS} rows. Please split it into smaller files.`,
       ],
       rows: [],
+      balances: empty,
     };
 
   const m = {
@@ -178,10 +190,14 @@ export function parseStatement(
     problems.push(
       'We could not find an amount column (or separate credit and debit columns).',
     );
-  if (problems.length) return { headers, mapping: null, problems, rows: [] };
+  if (problems.length)
+    return { headers, mapping: null, problems, rows: [], balances: empty };
   const mapping = m as ColumnMapping;
 
-  const rows: ParsedRow[] = parsed.data.map((rec, i) => {
+  const rows: ParsedRow[] = [];
+  const balances: StatementBalances = { ...empty };
+
+  parsed.data.forEach((rec, i) => {
     const rowNumber = i + 1;
     const get = (col?: string) =>
       col ? (rec[col] ?? '').toString().trim() : '';
@@ -220,10 +236,20 @@ export function parseStatement(
         direction = 'OUT';
       } else error = 'The amount could not be read.';
     }
+
+    // "Opening balance" / "Closing balance" lines carry an amount but are not transactions.
+    if (description && amount && BALANCE_ROW.test(description)) {
+      if (/^opening/i.test(description) && !balances.openingBalance)
+        balances.openingBalance = amount.toFixed(2);
+      else if (/^closing/i.test(description) && !balances.closingBalance)
+        balances.closingBalance = amount.toFixed(2);
+      return;
+    }
+
     if (!error && !date)
       error =
         'The date could not be read (use a real date that is not in the future).';
-    return {
+    rows.push({
       rowNumber,
       externalReference,
       date,
@@ -232,9 +258,10 @@ export function parseStatement(
       direction,
       status: error ? 'INVALID' : 'VALID',
       note: error,
-    };
+    });
   });
-  return { headers, mapping, problems, rows };
+
+  return { headers, mapping, problems, rows, balances };
 }
 
 /** Same reference, or (when there is no reference) same date + amount + direction + text, counts as a duplicate. */

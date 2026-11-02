@@ -117,10 +117,11 @@ export class ReportsService {
 
   /** Single source of truth: the dashboard and the reports page both call this. */
   async summary(range: Range) {
-    const [invSales, txns, owing, catRows] = await Promise.all([
+    const [invSales, txns, owing, stmt, catRows] = await Promise.all([
       this.invoiceSalesByDay(range),
       this.txnsByDay(range),
       this.customersOwing(),
+      this.statementTotals(range),
       this.prisma.transaction.groupBy({
         by: ['type', 'category'],
         where: {
@@ -139,12 +140,18 @@ export class ReportsService {
         .map((t) => t.amount),
     );
     const invoiceSales = sum([...invSales.values()]);
+    // A statement row that was matched to an invoice already created a payment transaction, so
+    // that payment is removed here before the statement row itself is added: one naira, one count.
     const moneyIn = sum(
       txns.filter((t) => t.type === 'INCOME').map((t) => t.amount),
-    );
+    )
+      .minus(stmt.createdTransactions.income)
+      .plus(stmt.credits);
     const moneyOut = sum(
       txns.filter((t) => t.type === 'EXPENSE').map((t) => t.amount),
-    );
+    )
+      .minus(stmt.createdTransactions.expense)
+      .plus(stmt.debits);
     const breakdown = (t: 'INCOME' | 'EXPENSE') =>
       catRows
         .filter((c) => c.type === t)
@@ -182,6 +189,205 @@ export class ReportsService {
       },
       expensesByCategory: breakdown('EXPENSE'),
       incomeByCategory: breakdown('INCOME'),
+      statement: {
+        credits: money(stmt.credits),
+        debits: money(stmt.debits),
+        net: money(stmt.net),
+        openingBalance: stmt.openingBalance ? money(stmt.openingBalance) : null,
+        closingBalance: stmt.closingBalance ? money(stmt.closingBalance) : null,
+        reconciles: stmt.reconciles,
+        importCount: stmt.importCount,
+        rowCount: stmt.rowCount,
+      },
+    };
+  }
+
+  /**
+   * What uploaded statements say moved through the account in [range], plus the transactions those
+   * rows already produced (so nothing is counted twice), and whether the file's own
+   * opening + credits - debits = closing arithmetic holds.
+   */
+  async statementTotals(range: Range) {
+    const businessId = requireBusinessId();
+    const [rows, imports] = await Promise.all([
+      this.prisma.importedTransaction.findMany({
+        where: {
+          import: { businessId },
+          matchStatus: { notIn: ['INVALID', 'DUPLICATE'] },
+          date: { gte: toDbDate(range.from), lte: toDbDate(range.to) },
+          amount: { not: null },
+        },
+        select: { amount: true, direction: true },
+      }),
+      this.prisma.reconciliationImport.findMany({
+        where: { businessId },
+        orderBy: { createdAt: 'asc' },
+        select: { openingBalance: true, closingBalance: true },
+      }),
+    ]);
+    let credits = new Decimal(0);
+    let debits = new Decimal(0);
+    for (const r of rows) {
+      if (!r.amount) continue;
+      if (r.direction === 'IN') credits = credits.plus(D(r.amount));
+      else if (r.direction === 'OUT') debits = debits.plus(D(r.amount));
+    }
+    const createdIds = (
+      await this.prisma.importedTransaction.findMany({
+        where: { import: { businessId }, createdTransactionId: { not: null } },
+        select: { createdTransactionId: true },
+      })
+    ).flatMap((r) => (r.createdTransactionId ? [r.createdTransactionId] : []));
+    const created = createdIds.length
+      ? await this.prisma.transaction.groupBy({
+          by: ['type'],
+          where: { id: { in: createdIds } },
+          _sum: { amount: true },
+        })
+      : [];
+    const createdSum = (type: 'INCOME' | 'EXPENSE') =>
+      D(created.find((c) => c.type === type)?._sum.amount ?? 0);
+    const opening =
+      imports.find((i) => i.openingBalance !== null)?.openingBalance ?? null;
+    const closing =
+      [...imports].reverse().find((i) => i.closingBalance !== null)
+        ?.closingBalance ?? null;
+    return {
+      credits,
+      debits,
+      net: credits.minus(debits),
+      openingBalance: opening ? D(opening) : null,
+      closingBalance: closing ? D(closing) : null,
+      reconciles:
+        opening && closing
+          ? D(opening).plus(credits).minus(debits).equals(D(closing))
+          : null,
+      importCount: imports.length,
+      rowCount: rows.length,
+      createdTransactions: {
+        income: createdSum('INCOME'),
+        expense: createdSum('EXPENSE'),
+      },
+    };
+  }
+
+  /**
+   * The most recent upload as a whole file. The dashboard shows this rather than a rolling window,
+   * because "does opening + credits - debits = closing" is only a meaningful check for the file
+   * that states those balances.
+   */
+  async latestStatement() {
+    const businessId = requireBusinessId();
+    const [imp, importCount] = await Promise.all([
+      this.prisma.reconciliationImport.findFirst({
+        where: { businessId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          rows: { select: { amount: true, direction: true, matchStatus: true } },
+        },
+      }),
+      this.prisma.reconciliationImport.count({ where: { businessId } }),
+    ]);
+    if (!imp)
+      return {
+        credits: new Decimal(0),
+        debits: new Decimal(0),
+        net: new Decimal(0),
+        openingBalance: null as Decimal | null,
+        closingBalance: null as Decimal | null,
+        reconciles: null as boolean | null,
+        importCount: 0,
+        rowCount: 0,
+        filename: null as string | null,
+      };
+    let credits = new Decimal(0);
+    let debits = new Decimal(0);
+    let rowCount = 0;
+    for (const r of imp.rows) {
+      if (!r.amount) continue;
+      if (r.matchStatus === 'INVALID' || r.matchStatus === 'DUPLICATE') continue;
+      rowCount++;
+      if (r.direction === 'IN') credits = credits.plus(D(r.amount));
+      else if (r.direction === 'OUT') debits = debits.plus(D(r.amount));
+    }
+    const opening = imp.openingBalance ? D(imp.openingBalance) : null;
+    const closing = imp.closingBalance ? D(imp.closingBalance) : null;
+    return {
+      credits,
+      debits,
+      net: credits.minus(debits),
+      openingBalance: opening,
+      closingBalance: closing,
+      reconciles:
+        opening && closing
+          ? opening.plus(credits).minus(debits).equals(closing)
+          : null,
+      importCount,
+      rowCount,
+      filename: imp.filename,
+    };
+  }
+
+  /** Daily money in/out and the running balance taken from uploaded statements. */
+  async cashflow(range: Range) {
+    const businessId = requireBusinessId();
+    const [imports, rows] = await Promise.all([
+      this.prisma.reconciliationImport.findMany({
+        where: { businessId },
+        orderBy: { createdAt: 'asc' },
+        select: { openingBalance: true },
+      }),
+      this.prisma.importedTransaction.findMany({
+        where: {
+          import: { businessId },
+          matchStatus: { notIn: ['INVALID', 'DUPLICATE'] },
+          date: { not: null },
+          amount: { not: null },
+          direction: { not: null },
+        },
+        select: { date: true, amount: true, direction: true },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
+    const opening = imports.find((i) => i.openingBalance !== null)
+      ?.openingBalance;
+    const daily = new Map<string, { in: Decimal; out: Decimal }>();
+    for (const r of rows) {
+      if (!r.date || !r.amount) continue;
+      const d = isoDate(r.date);
+      const e = daily.get(d) ?? { in: new Decimal(0), out: new Decimal(0) };
+      if (r.direction === 'IN') e.in = e.in.plus(D(r.amount));
+      else if (r.direction === 'OUT') e.out = e.out.plus(D(r.amount));
+      daily.set(d, e);
+    }
+    let running = opening ? D(opening) : new Decimal(0);
+    for (const [d, v] of [...daily.entries()].sort())
+      if (d < range.from) running = running.plus(v.in).minus(v.out);
+    const points: {
+      date: string;
+      in: string;
+      out: string;
+      net: string;
+      balance: string;
+    }[] = [];
+    for (let d = range.from; d <= range.to; d = addDaysIso(d, 1)) {
+      const v = daily.get(d);
+      if (v) running = running.plus(v.in).minus(v.out);
+      points.push({
+        date: d,
+        in: money(v?.in ?? 0),
+        out: money(v?.out ?? 0),
+        net: money((v?.in ?? new Decimal(0)).minus(v?.out ?? 0)),
+        balance: money(running),
+      });
+    }
+    return {
+      from: range.from,
+      to: range.to,
+      openingBalance: opening ? money(D(opening)) : null,
+      openingKnown: Boolean(opening),
+      closingBalance: money(running),
+      points,
     };
   }
 
@@ -528,7 +734,8 @@ export class ReportsService {
     const today = todayInLagos();
     // The performance chart loads from /api/reports/performance on its own, so a slow chart never
     // delays the figures above it.
-    const [summary, owing, recent] = await Promise.all([
+    const thirtyDaysBack = addDaysIso(today, -29);
+    const [summary, owing, recent, statement, cashflow] = await Promise.all([
       this.summary({ from: today, to: today }),
       this.customersOwing(),
       this.prisma.transaction.findMany({
@@ -540,6 +747,8 @@ export class ReportsService {
           invoicePayment: { select: { invoiceId: true } },
         },
       }),
+      this.latestStatement(),
+      this.cashflow({ from: thirtyDaysBack, to: today }),
     ]);
     return {
       today,
@@ -553,6 +762,28 @@ export class ReportsService {
         total: summary.overdueInvoices.total,
       },
       topDebtors: owing.customers.slice(0, 5),
+      statement: {
+        credits: money(statement.credits),
+        debits: money(statement.debits),
+        net: money(statement.net),
+        openingBalance: statement.openingBalance
+          ? money(statement.openingBalance)
+          : null,
+        closingBalance: statement.closingBalance
+          ? money(statement.closingBalance)
+          : null,
+        reconciles: statement.reconciles,
+        importCount: statement.importCount,
+        rowCount: statement.rowCount,
+      },
+      cashflow: {
+        from: cashflow.from,
+        to: cashflow.to,
+        openingBalance: cashflow.openingBalance,
+        openingKnown: cashflow.openingKnown,
+        closingBalance: cashflow.closingBalance,
+        points: cashflow.points,
+      },
       recentActivity: recent.map((t) => ({
         id: t.id,
         label: t.description ?? t.category,

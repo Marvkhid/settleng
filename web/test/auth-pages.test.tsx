@@ -68,6 +68,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 vi.mock("@/lib/api-client", () => ({
+  setActiveWorkspace: vi.fn(),
   api: testApiMock(),
   ApiError: class ApiError extends Error {
     status: number;
@@ -152,7 +153,7 @@ describe("login page", () => {
     await fillField("Email", "me@example.com", user);
     await fillField("Password", "secret", user);
     await user.click(screen.getByRole("button", { name: /log in/i }));
-    await waitFor(() => expect(screen.getByText(/please confirm your email first/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/isn't active yet/i)).toBeInTheDocument());
   });
 
   it("shows a generic message for other errors", async () => {
@@ -178,10 +179,10 @@ describe("login page", () => {
     expect(mockRouter.replace).toHaveBeenCalledWith("/invoices"); // next param is honored
   });
 
-  it("shows a check-your-email note when the checkEmail param is set", () => {
-    setSearchParams("?checkEmail=1");
+  it("prefills the email address handed over by the sign-up page", () => {
+    setSearchParams("?email=me%40example.com");
     render(<LoginPage />, { wrapper: ({ children }) => <><Toaster richColors />{children}</> });
-    expect(screen.getByText(/almost there/i)).toBeInTheDocument();
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("me@example.com");
   });
 });
 
@@ -222,11 +223,15 @@ describe("signup page", () => {
     await fillField("Password", "secret12", user);
     await user.click(screen.getByRole("button", { name: /create account/i }));
     await waitFor(() => expect(testSupabase().auth.signUp).toHaveBeenCalled());
-    expect(testSupabase().auth.signUp).toHaveBeenCalledWith({
-      email: "me@example.com",
-      password: "secret12",
-      options: { data: { full_name: "Marvel Okafor", business_name: "Marvel Stores" } },
-    });
+    expect(testSupabase().auth.signUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "me@example.com",
+        password: "secret12",
+        options: expect.objectContaining({
+          data: { full_name: "Marvel Okafor", business_name: "Marvel Stores" },
+        }),
+      }),
+    );
     await waitFor(() => expect(testApiMock().bootstrap).toHaveBeenCalledWith({
       fullName: "Marvel Okafor",
       businessName: "Marvel Stores",
@@ -237,7 +242,7 @@ describe("signup page", () => {
   it("sends to the check-your-inbox note when email confirmation is on", async () => {
     render(<SignupPage />, { wrapper: ({ children }) => <><Toaster richColors />{children}</> });
     testSupabase().auth.signUp = vi.fn().mockResolvedValue({
-      data: { user: { id: "u1", email: "me@example.com", app_metadata: {} } },
+      data: { user: { id: "u1", email: "me@example.com", app_metadata: {}, identities: [{ id: "i1", provider: "email" }] } },
       session: null,
       error: null,
     });
@@ -246,8 +251,12 @@ describe("signup page", () => {
     await fillField("Email", "me@example.com", user);
     await fillField("Password", "secret12", user);
     await user.click(screen.getByRole("button", { name: /create account/i }));
-    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/login?checkEmail=1"));
-    expect(await screen.findByText(/almost there/i)).toBeInTheDocument(); // email confirmation path
+    await waitFor(() =>
+      expect(mockRouter.replace).toHaveBeenCalledWith("/login?email=me%40example.com"),
+    );
+    expect(
+      await screen.findByText(/your account was created, but we couldn't sign you in yet/i),
+    ).toBeInTheDocument();
   });
 
   it("shows a friendly message when the email already exists", async () => {
@@ -288,7 +297,7 @@ describe("forgot password page", () => {
     await waitFor(() => expect(testSupabase().auth.resetPasswordForEmail).toHaveBeenCalledWith("me@example.com", {
       redirectTo: expect.stringContaining("/reset-password"),
     }));
-    expect(await screen.findByText(/we've sent a link/i)).toBeInTheDocument();
+    expect(await screen.findByText(/a reset link is on its way/i)).toBeInTheDocument();
   });
 
   it("shows a generic message when sending fails", async () => {
@@ -310,15 +319,16 @@ describe("reset password page", () => {
     setSearchParams("");
   });
 
-  it("renders the new password field and a save button", () => {
+  it("renders the new password field and a save button", async () => {
     render(<ResetPasswordPage />, { wrapper: ({ children }) => <><Toaster richColors />{children}</> });
-    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+    expect(await screen.findByLabelText("New password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save password/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to log in/i })).toHaveAttribute("href", "/login");
   });
 
   it("updates the password and navigates on success", async () => {
     render(<ResetPasswordPage />, { wrapper: ({ children }) => <><Toaster richColors />{children}</> });
+    await screen.findByLabelText("New password");
     testSupabase().auth.updateUser = vi.fn().mockResolvedValue({ error: null });
     await fillField("New password", "newsecret12", user);
     await user.click(screen.getByRole("button", { name: /save password/i }));
@@ -328,6 +338,7 @@ describe("reset password page", () => {
 
   it("shows a message when the update fails", async () => {
     render(<ResetPasswordPage />, { wrapper: ({ children }) => <><Toaster richColors />{children}</> });
+    await screen.findByLabelText("New password");
     testSupabase().auth.updateUser = vi.fn().mockResolvedValue({ error: { message: "Too weak" } });
     await fillField("New password", "123", user);
     await user.click(screen.getByRole("button", { name: /save password/i }));

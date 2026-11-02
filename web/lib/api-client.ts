@@ -1,9 +1,15 @@
 import type {
+  DebtReminderState,
+  ReminderFrequency,
+  RemindersOverview,
   Categories, CustomerDetail, CustomerSummary, Dashboard, InvoiceStatus, InvoiceView, Method, Page, SaleMethod, Series,
   TransactionView, Me, CsvPreview, ColumnMapping, ImportDetail, ImportSummary,
   Performance, PerformancePeriod, ReportSummary, ExportType,
+  WorkspaceSummary, WorkspaceKind, MemberView, DebtView, DebtDetail, DebtSummary, DebtAnalytics,
+  DebtDocument, DebtStatus, DebtDirection, UpcomingReminder, RecoveryOverview, PublicPaymentRequest, ReminderChannel,
 } from "@/types/api";
 import { getApiUrl } from "./env";
+import { beginLoading, endLoading, isBlockingRequest } from "./loading";
 import { supabase } from "./supabase/client";
 
 export class ApiError extends Error {
@@ -12,6 +18,19 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
   get isNotFound() { return this.status === 404; }
+}
+
+/**
+ * The workspace the UI is currently acting on. It is sent as a header on every request; the API
+ * only honours it if the signed-in user is an active member, so it can never widen access.
+ */
+let activeWorkspaceId: string | null = null;
+export function setActiveWorkspace(id: string | null): void {
+  activeWorkspaceId = id;
+}
+
+export function getActiveWorkspace(): string | null {
+  return activeWorkspaceId;
 }
 
 /** The signed-in user's Supabase access token, attached as a Bearer header to every API call. */
@@ -31,11 +50,18 @@ async function accessToken(): Promise<string | undefined> {
 const REQUEST_TIMEOUT_MS = 45_000;
 
 /** One authenticated request. Every caller - JSON, file upload, CSV download - goes through here. */
-async function send(path: string, init?: RequestInit): Promise<Response> {
+async function send(
+  path: string,
+  init?: RequestInit,
+  options?: { loading?: boolean },
+): Promise<Response> {
   let res: Response;
   const token = await accessToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Only user-initiated writes block the screen. Background reads stay silent.
+  const blocking = options?.loading ?? isBlockingRequest(init?.method);
+  if (blocking) beginLoading();
   try {
     res = await fetch(`${getApiUrl()}/api${path}`, {
       ...init,
@@ -43,6 +69,7 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
       headers: {
         ...(init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(activeWorkspaceId ? { "x-workspace-id": activeWorkspaceId } : {}),
         ...init?.headers,
       },
       cache: "no-store",
@@ -56,6 +83,7 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
     );
   } finally {
     clearTimeout(timer);
+    if (blocking) endLoading();
   }
   if (!res.ok) {
     let message = "Something went wrong. Please try again.";
@@ -70,8 +98,12 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
   return res;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await send(path, init);
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  options?: { loading?: boolean },
+): Promise<T> {
+  const res = await send(path, init, options);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -103,7 +135,8 @@ export const api = {
   reportSummary: (from: string, to: string) => request<ReportSummary>(`/reports/summary?from=${from}&to=${to}`),
   /** CSV downloads need the Bearer token too, so they cannot be a plain <a href>. */
   exportCsv: async (type: ExportType, from: string, to: string): Promise<{ blob: Blob; filename: string }> => {
-    const res = await send(`/reports/export?type=${type}&from=${from}&to=${to}`);
+    // A CSV download is user-initiated and can take a moment, so it blocks on purpose.
+    const res = await send(`/reports/export?type=${type}&from=${from}&to=${to}`, undefined, { loading: true });
     const disposition = res.headers.get("Content-Disposition") ?? "";
     const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `${type}.csv`;
     return { blob: await res.blob(), filename };
@@ -151,7 +184,86 @@ export const api = {
   confirmRow: (rowId: string, invoiceId?: string) => request<{ status: string }>(`/reconciliation/rows/${rowId}/confirm`, json("POST", invoiceId ? { invoiceId } : {})),
   rejectRow: (rowId: string) => request<{ status: string }>(`/reconciliation/rows/${rowId}/reject`, json("POST")),
   templateUrl: () => `${getApiUrl()}/api/reconciliation/template`,
+
+  /* ---- workspaces and members ---- */
+  workspaces: () => request<{ items: WorkspaceSummary[] }>("/workspaces"),
+  createWorkspace: (b: { name: string; kind?: WorkspaceKind }) =>
+    request<WorkspaceSummary>("/workspaces", json("POST", b)),
+  renameWorkspace: (id: string, b: { name: string }) =>
+    request<{ id: string; name: string }>(`/workspaces/${id}`, json("PATCH", b)),
+  members: (id: string) => request<{ items: MemberView[] }>(`/workspaces/${id}/members`),
+  inviteMember: (id: string, b: { email: string; role: "MANAGER" | "STAFF" }) =>
+    request<{ id: string; email: string | null; role: string; status: string }>(`/workspaces/${id}/members`, json("POST", b)),
+  changeMemberRole: (id: string, memberId: string, b: { role: "MANAGER" | "STAFF" }) =>
+    request<{ id: string; role: string }>(`/workspaces/${id}/members/${memberId}`, json("PATCH", b)),
+  removeMember: (id: string, memberId: string) =>
+    request<{ status: string }>(`/workspaces/${id}/members/${memberId}`, { method: "DELETE" }),
+
+  /* ---- debts ---- */
+  debts: (q: { direction?: DebtDirection | ""; status?: DebtStatus | ""; search?: string; customerId?: string; from?: string; to?: string; page?: number; pageSize?: number } = {}) =>
+    request<Page<DebtView>>(`/debts${qs(q)}`),
+  debt: (id: string) => request<DebtDetail>(`/debts/${id}`),
+  debtSummary: () => request<DebtSummary>("/debts/summary"),
+  debtAnalytics: () => request<DebtAnalytics>("/debts/analytics"),
+  createDebt: (b: {
+    counterpartyName: string; counterpartyPhone?: string; counterpartyEmail?: string;
+    direction: DebtDirection; principal: string; description: string; incurredOn: string;
+    dueOn?: string; terms?: string; customerId?: string;
+  }) => request<DebtView>("/debts", json("POST", b)),
+  updateDebt: (id: string, b: Record<string, unknown>) => request<DebtView>(`/debts/${id}`, json("PATCH", b)),
+  deleteDebt: (id: string) => request<{ status: string }>(`/debts/${id}`, { method: "DELETE" }),
+  recordDebtRepayment: (id: string, b: { amount: string; paidOn?: string; method: Method; reference?: string; note?: string }) =>
+    request<{ id: string; amount: string; balance: string; status: string }>(`/debts/${id}/repayments`, json("POST", b)),
+  assignDebt: (id: string, userId: string | null) =>
+    request<{ id: string; assignedToUserId: string | null }>(`/debts/${id}/assign`, json("PATCH", { userId })),
+
+  /* ---- recovery ---- */
+  createPaymentRequest: (debtId: string, days = 30) =>
+    request<{ id: string; token: string; path: string; expiresAt: string | null }>(`/debts/${debtId}/payment-requests`, json("POST", { days })),
+  revokePaymentRequest: (debtId: string, requestId: string) =>
+    request<{ status: string }>(`/debts/${debtId}/payment-requests/${requestId}/revoke`, json("POST")),
+  createReminder: (debtId: string, b: { channel: ReminderChannel; scheduledFor?: string; templateKey?: "friendly" | "firm" }) =>
+    request<{ id: string; status: string; scheduledFor: string }>(`/debts/${debtId}/reminders`, json("POST", b)),
+  sendReminder: (debtId: string, b: { channel: ReminderChannel; templateKey?: "friendly" | "firm" }) =>
+    request<{ status: string; reason: string | null; provider: string }>(`/debts/${debtId}/reminders/send`, json("POST", b)),
+  sendExistingReminder: (debtId: string, reminderId: string) =>
+    request<{ status: string; reason?: string | null }>(`/debts/${debtId}/reminders/${reminderId}/send`, json("POST")),
+  cancelReminder: (debtId: string, reminderId: string) =>
+    request<{ status: string }>(`/debts/${debtId}/reminders/${reminderId}`, { method: "DELETE" }),
+
+  /* ---- Smart Debt Reminders ---- */
+  debtReminder: (debtId: string) => request<DebtReminderState>(`/debts/${debtId}/reminder`),
+  saveDebtReminder: (debtId: string, b: { enabled: boolean; frequency: ReminderFrequency; times: string[]; timezone?: string; paused?: boolean }) =>
+    request<{ enabled: boolean; paused: boolean; nextRunAt: string | null }>(`/debts/${debtId}/reminder`, json("PUT", b)),
+  pauseDebtReminder: (debtId: string, paused: boolean) =>
+    request<{ paused: boolean; nextRunAt: string | null }>(`/debts/${debtId}/reminder/pause`, json("POST", { paused })),
+  disableDebtReminder: (debtId: string) =>
+    request<{ enabled: boolean }>(`/debts/${debtId}/reminder`, { method: "DELETE" }),
+  remindersOverview: () => request<RemindersOverview>("/debt-reminders"),
+  sendReminderTest: () =>
+    request<{ status: string; provider: string; subject: string; to: string; reason: string | null; debtCount: number; preview: string }>(`/debt-reminders/test`, json("POST")),
+  upcomingReminders: () => request<{ items: UpcomingReminder[] }>("/recovery/upcoming"),
+  notificationLog: () => request<RecoveryOverview>("/recovery/notifications"),
+  uploadDocument: (debtId: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<DebtDocument>(`/debts/${debtId}/documents`, { method: "POST", body: form });
+  },
+  documentLink: (documentId: string) =>
+    request<{ url: string; filename: string; expiresIn: number }>(`/documents/${documentId}/link`),
 };
+
+/** Public payment-request lookup. No token and no workspace header; the link itself is the grant. */
+export async function publicPaymentRequest(token: string): Promise<PublicPaymentRequest> {
+  let res: Response;
+  try {
+    res = await fetch(`${getApiUrl()}/api/public/payment-requests/${encodeURIComponent(token)}`, { cache: "no-store" });
+  } catch {
+    throw new ApiError(0, "We can't reach the server right now. Check your connection and try again.");
+  }
+  if (!res.ok) throw new ApiError(res.status, "This payment link is no longer available.");
+  return (await res.json()) as PublicPaymentRequest;
+}
 
 function csvForm(file: File, mapping?: ColumnMapping): FormData {
   const f = new FormData();

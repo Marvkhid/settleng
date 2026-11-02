@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import {
-  ArrowDownLeft, ArrowUpRight, FileText, GitCompareArrows, Home, LineChart, LogOut, Menu, Plus, Settings, Users,
+  ArrowDownLeft, ArrowUpRight, BookOpen, FileText, GitCompareArrows, HandCoins, Home, LineChart, LogOut, Menu, PieChart, Plus, Send, Settings, ShieldCheck, Users,
 } from "lucide-react";
+import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { ActionsProvider, useActions } from "@/components/forms/actions";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -21,8 +23,14 @@ const PRIMARY: Item[] = [
   { href: "/customers", label: "Customers", Icon: Users, match: (p) => p.startsWith("/customers") },
   { href: "/invoices", label: "Invoices", Icon: FileText, match: (p) => p.startsWith("/invoices") },
   { href: "/reports", label: "Reports", Icon: LineChart, match: (p) => p.startsWith("/reports") },
+  { href: "/debts", label: "Debts", Icon: HandCoins, match: (p) => p.startsWith("/debts") },
 ];
 const SECONDARY: Item[] = [
+  { href: "/guide", label: "How to use SettleNG", Icon: BookOpen, match: (p) => p.startsWith("/guide") },
+  { href: "/reminders", label: "Reminders", Icon: Bell, match: (p) => p.startsWith("/reminders") },
+  { href: "/recovery", label: "Recovery", Icon: Send, match: (p) => p.startsWith("/recovery") },
+  { href: "/analytics", label: "Analytics", Icon: PieChart, match: (p) => p.startsWith("/analytics") },
+  { href: "/team", label: "Team", Icon: ShieldCheck, match: (p) => p.startsWith("/team") },
   { href: "/reconciliation", label: "Match records", Icon: GitCompareArrows, match: (p) => p.startsWith("/reconciliation") },
   { href: "/settings", label: "Settings", Icon: Settings, match: (p) => p.startsWith("/settings") },
 ];
@@ -40,11 +48,10 @@ function SideLink({ item, active }: { item: Item; active: boolean }) {
 function Sidebar() {
   const path = usePathname();
   const type = useSearchParams().get("type");
-  const { businessName } = useAuth();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-6 border-r border-line bg-paper p-5 md:flex">
       <Wordmark href="/dashboard" />
-      {businessName && <p className="-mt-3 truncate text-sm text-slate">{businessName}</p>}
+      <WorkspaceSwitcher />
       <nav aria-label="Main" className="flex flex-col gap-1">{PRIMARY.map((i) => <SideLink key={i.href} item={i} active={i.match(path, type)} />)}</nav>
       <nav aria-label="More" className="mt-auto flex flex-col gap-1 border-t border-line pt-4">{SECONDARY.map((i) => <SideLink key={i.href} item={i} active={i.match(path, type)} />)}</nav>
     </aside>
@@ -110,12 +117,13 @@ function BottomBar() {
         </button>
       </nav>
       <Sheet open={more} onOpenChange={setMore} title={businessName ?? "Menu"} description={firstName ? `Signed in as ${firstName}` : undefined}>
+        <div className="mb-2"><WorkspaceSwitcher compact /></div>
         <div className="mb-2 flex items-center justify-between rounded-xl bg-sunken px-3 py-2">
           <span className="text-sm font-semibold text-ink-soft">Appearance</span>
           <ThemeToggle className="size-9 border-0 bg-surface" />
         </div>
         <div className="grid gap-1">
-          {[PRIMARY[1], PRIMARY[2], PRIMARY[5], ...SECONDARY].map((i) => (
+          {[PRIMARY[1], PRIMARY[2], PRIMARY[5], PRIMARY[6], ...SECONDARY].map((i) => (
             <Link key={i.href} href={i.href} onClick={() => setMore(false)} className="flex min-h-14 items-center gap-3 rounded-xl px-3 text-lg font-semibold hover:bg-sunken">
               <i.Icon className="size-6 text-slate" aria-hidden /> {i.label}
             </Link>

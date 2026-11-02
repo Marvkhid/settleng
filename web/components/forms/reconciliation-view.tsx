@@ -61,7 +61,7 @@ function UploadPanel({ onImported }: { onImported: (id: string) => void }) {
   return (
     <section aria-labelledby="up-h" className="rounded-2xl border border-line bg-surface p-4 md:p-6">
       <h2 id="up-h" className="text-xl font-bold">Upload a statement</h2>
-      <p className="mt-1 text-slate">A CSV, TSV, .txt or Excel (.xlsx) file with a date, an amount and (ideally) a description for each row. PDF and Word statements are not read yet.</p>
+      <p className="mt-1 text-slate">A CSV, TSV, .txt or Excel (.xlsx) file with a date, an amount and (ideally) a description for each row. PDF statements with readable text also work; Word documents are not read.</p>
       <a href={api.templateUrl()} download className="inline-flex min-h-11 items-center gap-1 font-semibold text-emerald-ink underline"><Download className="size-4" aria-hidden /> Download a sample file</a>
       <input ref={input} id="csv-file" type="file" accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
       {!file ? (
@@ -199,6 +199,17 @@ function ImportDetailView({ id }: { id: string }) {
       <button type="button" onClick={() => router.push("/reconciliation")} className="mb-4 inline-flex min-h-11 items-center gap-1 font-semibold text-slate hover:text-ink"><ArrowLeft className="size-4" aria-hidden /> All uploads</button>
       <h1 className="text-3xl font-extrabold">{d.filename}</h1>
       <p className="mt-1 text-slate">{d.notice}</p>
+      <dl className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-line bg-surface p-4 sm:grid-cols-4">
+        <div><dt className="text-sm text-slate">Money in</dt><dd className="figure tnum font-bold text-emerald-ink">{formatNaira(d.statement.credits)}</dd></div>
+        <div><dt className="text-sm text-slate">Money out</dt><dd className="figure tnum font-bold">{formatNaira(d.statement.debits)}</dd></div>
+        <div><dt className="text-sm text-slate">Opening</dt><dd className="figure tnum font-bold">{d.statement.openingBalance ? formatNaira(d.statement.openingBalance) : "—"}</dd></div>
+        <div><dt className="text-sm text-slate">Closing</dt><dd className="figure tnum font-bold">{d.statement.closingBalance ? formatNaira(d.statement.closingBalance) : "—"}</dd></div>
+      </dl>
+      {d.statement.reconciles === false && (
+        <p role="alert" className="mt-3 rounded-xl bg-red-wash px-3 py-2 font-semibold text-red">
+          This file does not add up: opening plus money in minus money out does not equal the closing balance it states.
+        </p>
+      )}
       <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
         {d.rows.map((r) => (
           <li key={r.id} className="px-4 py-3">

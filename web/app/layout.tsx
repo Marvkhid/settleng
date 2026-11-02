@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { Analytics } from "@/components/analytics";
+import { GlobalLoading, NavigationLoadingBridge } from "@/components/ui/global-loading";
 import {
   SITE_DESCRIPTION,
   SITE_KEYWORDS,
@@ -93,6 +94,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         {children}
+        <GlobalLoading />
+        <NavigationLoadingBridge />
         <Toaster position="top-center" richColors closeButton toastOptions={{ className: "font-body" }} />
         <Analytics measurementId={process.env.NEXT_PUBLIC_GA_ID} />
       </body>

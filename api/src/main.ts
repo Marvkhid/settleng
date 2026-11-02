@@ -5,6 +5,15 @@ import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { loadEnv } from './config/env';
 
+/**
+ * A single failed request must never take the API down. Node exits on an unhandled rejection by
+ * default, which turns one bad request into an outage for every tenant; log it instead so the
+ * process stays up and the failure is still visible in the logs.
+ */
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
 async function bootstrap() {
   const env = loadEnv();
   const app = await NestFactory.create(AppModule);

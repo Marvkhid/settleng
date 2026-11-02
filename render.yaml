@@ -28,3 +28,11 @@ services:
         sync: false
       - key: CORS_ORIGIN      # your website URL, for example https://settleng.vercel.app
         sync: false
+      - key: APP_URL          # public site URL used in reminder email links, e.g. https://settleng.vercel.app
+        sync: false
+      - key: CRON_SECRET      # openssl rand -hex 32; the cron job sends this as x-cron-secret
+        sync: false
+      - key: RESEND_API_KEY   # https://resend.com/api-keys - server-side only, never in the web app
+        sync: false
+      - key: RESEND_FROM      # optional, defaults to the verified sender configured in the API
+        sync: false

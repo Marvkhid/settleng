@@ -29,6 +29,7 @@ export const SITE_KEYWORDS = [
 /** Public pages that belong in the sitemap. Signed-in app routes are excluded on purpose. */
 export const PUBLIC_ROUTES: { path: string; priority: number; changeFrequency: "weekly" | "monthly" }[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
+  { path: "/guide", priority: 0.8, changeFrequency: "monthly" },
   { path: "/about", priority: 0.7, changeFrequency: "monthly" },
   { path: "/support", priority: 0.6, changeFrequency: "monthly" },
   { path: "/signup", priority: 0.8, changeFrequency: "monthly" },

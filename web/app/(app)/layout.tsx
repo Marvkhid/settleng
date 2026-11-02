@@ -5,8 +5,9 @@ import { AuthProvider, useAuth } from "@/components/auth/auth-provider";
 import { AppShell } from "@/components/shell/app-shell";
 
 /**
- * Guards the signed-in app: while loading we show nothing extra (the shell handles its own
- * skeletons); once loaded, a user who hasn't finished onboarding is sent to /onboarding.
+ * Guards the signed-in app. A user who has not finished onboarding is sent to /onboarding, and the
+ * app's pages are not rendered until a workspace exists — otherwise every page fires data requests
+ * that have no workspace to scope to, which is both pointless and noisy.
  */
 function RequireBusiness({ children }: { children: React.ReactNode }) {
   const { me, loading } = useAuth();
@@ -16,6 +17,8 @@ function RequireBusiness({ children }: { children: React.ReactNode }) {
     if (!loading && me && !me.business) router.replace("/onboarding");
   }, [loading, me, router]);
 
+  if (loading) return null;
+  if (!me?.business) return null;
   return <>{children}</>;
 }
 
