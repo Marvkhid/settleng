@@ -57,13 +57,24 @@ export function GlobalLoading() {
 }
 
 /**
- * Starts the overlay on a genuine internal navigation and ends it when the destination renders.
+ * Opens the overlay on a genuine internal navigation and closes it when the destination renders.
  * Same-path clicks (anchors, filters that only change the query string) are ignored so the overlay
- * never gets stuck or flashes for something that is not a page change.
+ * never flashes for something that is not a page change.
+ *
+ * Started by a left-click on an internal link, or by `popstate` — back/forward is browser-initiated
+ * so there is no click to catch. Ended by the pathname change (which also covers a navigation that
+ * lands on a 404 or an error page), with a safety timer in the store as the last resort for a route
+ * request that never comes back at all.
+ *
+ * Note on failed navigations: Next.js keeps its own bound copy of `fetch`, so wrapping
+ * `window.fetch` here observes nothing (verified in the browser — zero router calls seen), and a
+ * wrapper would be dead code. Ending on the pathname change plus the safety timer is what actually
+ * releases the overlay in those cases.
  */
 export function NavigationLoadingBridge() {
   const pathname = usePathname();
   const mounted = useRef(false);
+  const seenPathname = useRef(pathname);
 
   useEffect(() => {
     if (!mounted.current) {
@@ -71,6 +82,7 @@ export function NavigationLoadingBridge() {
       return;
     }
     finishNavigation();
+    seenPathname.current = pathname;
   }, [pathname]);
 
   useEffect(() => {
@@ -90,6 +102,16 @@ export function NavigationLoadingBridge() {
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      // A hash-only traversal leaves the pathname alone: nothing is loading, so start nothing.
+      if (window.location.pathname === seenPathname.current) return;
+      startNavigation();
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   return null;

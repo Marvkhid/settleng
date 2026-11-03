@@ -62,6 +62,15 @@
   --panel-soft: #1a2a46;
 }
 
+/* Native <select> option popups are painted by the operating system, not by our CSS. On a light
+   system palette the list comes up white while the options still carry the dark theme's near-white
+   ink, so every choice except the highlighted one becomes invisible. Pin an explicit ink-on-surface
+   pair per theme: an option stays legible on whichever popup background the OS draws. */
+select option {
+  color: var(--ink);
+  background-color: var(--surface);
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-surface: var(--surface);

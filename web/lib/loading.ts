@@ -48,7 +48,18 @@ function createStore(): LoadingStore {
   };
 }
 
+/**
+ * Browser only.
+ *
+ * This module also runs inside Next's shared server process during SSR, where a `globalThis` slot
+ * would be ONE object reused for every request — state leaking between users. So on the server the
+ * store stays private to this module instance, `globalThis` is never written, and every mutator
+ * below is a no-op: a request can never leave loading state behind for the next one.
+ */
+const isBrowser = typeof window !== "undefined";
+
 const store: LoadingStore = (() => {
+  if (!isBrowser) return createStore();
   const host = globalThis as unknown as Record<string, LoadingStore | undefined>;
   const existing = host[STORE_KEY];
   if (existing) return existing;
@@ -58,6 +69,7 @@ const store: LoadingStore = (() => {
 })();
 
 export function subscribeLoading(listener: Listener): () => void {
+  if (!isBrowser) return () => undefined;
   store.listeners.add(listener);
   return () => {
     store.listeners.delete(listener);
@@ -65,7 +77,7 @@ export function subscribeLoading(listener: Listener): () => void {
 }
 
 export function getLoadingSnapshot(): boolean {
-  return store.snapshot;
+  return isBrowser ? store.snapshot : false;
 }
 
 /** Server render: never show the overlay, so hydration matches. */
@@ -122,6 +134,7 @@ function scheduleHide(): void {
 }
 
 export function beginLoading(): void {
+  if (!isBrowser) return;
   store.requests += 1;
   if (store.requests === 1) {
     if (store.hideTimer) {
@@ -133,12 +146,14 @@ export function beginLoading(): void {
 }
 
 export function endLoading(): void {
+  if (!isBrowser) return;
   store.requests = Math.max(0, store.requests - 1);
   scheduleHide();
 }
 
 /** Called when an internal link is clicked; resolved once the new pathname is rendered. */
 export function startNavigation(): void {
+  if (!isBrowser) return;
   if (store.navOwned) return;
   store.navOwned = true;
   beginLoading();
@@ -150,6 +165,7 @@ export function startNavigation(): void {
 }
 
 export function finishNavigation(): void {
+  if (!isBrowser) return;
   if (store.navTimer) {
     clearTimeout(store.navTimer);
     store.navTimer = null;
@@ -161,6 +177,7 @@ export function finishNavigation(): void {
 
 /** Test helper: returns the store to a clean state without touching the DOM. */
 export function resetLoadingForTests(): void {
+  if (!isBrowser) return;
   store.requests = 0;
   store.navOwned = false;
   store.visible = false;

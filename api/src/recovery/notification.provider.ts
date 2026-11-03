@@ -62,7 +62,10 @@ export class NotificationProviders {
         skippedReason: 'provider_not_configured',
       };
     }
-    const from = process.env.REMINDER_FROM ?? 'SettleNG <onboarding@resend.dev>';
+    // render.yaml ships RESEND_FROM while older envs use REMINDER_FROM. Accept either name so a
+    // configured production sender is never silently ignored.
+    const from =
+      process.env.REMINDER_FROM ?? process.env.RESEND_FROM ?? 'SettleNG <onboarding@resend.dev>';
     const base = (process.env.RESEND_BASE_URL ?? 'https://api.resend.com').replace(/\/$/, '');
     try {
       const { res, body } = await this.post(
