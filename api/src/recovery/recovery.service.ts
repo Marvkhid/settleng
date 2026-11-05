@@ -390,7 +390,7 @@ export class RecoveryService {
         debtId: r.debtId,
       })),
       configured: {
-        email: !!process.env.RESEND_API_KEY,
+        email: this.providers.emailConfigured(),
         whatsapp: !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
         sms: !!process.env.TERMII_API_KEY,
         scheduler: !!process.env.CRON_SECRET,

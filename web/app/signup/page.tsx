@@ -90,9 +90,8 @@ export default function SignupPage() {
         router.replace(`/login?email=${encodeURIComponent(email.trim())}`);
         return;
       }
-      // Informational only: it must never delay or block sign-in, so it is not awaited.
-      void fetch("/api/signup-notice", { method: "POST" }).catch(() => {});
-      // Create the Profile + Business on the API, then land in the dashboard.
+      // Create the Profile + Business on the API, then land in the dashboard. The API sends the
+      // "your account is ready" alert to this exact address while doing so.
       await api.bootstrap({ fullName: fullName.trim(), businessName: businessName.trim() });
       toast.success("Welcome to SettleNG!");
       router.replace("/dashboard");

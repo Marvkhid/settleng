@@ -91,6 +91,7 @@ export function RemindersView() {
           <h2 className="text-lg font-extrabold tracking-tight">Debts with automatic reminders</h2>
           <p className="text-sm text-slate">
             Sent to <span className="font-semibold text-ink">{d.email ?? "your account email"}</span>
+            {d.emailProvider ? ` via ${d.emailProvider === "gmail" ? "Gmail" : "Resend"}` : ""}
             {d.totals.nextRunAt ? ` · next ${friendlyDate(d.totals.nextRunAt.slice(0, 10))}` : ""}
           </p>
         </div>
@@ -116,6 +117,7 @@ export function RemindersView() {
                     <span className="block truncate font-bold">{i.name}</span>
                     <span className="block truncate text-sm text-slate">
                       {i.times.map(label).join(", ")} · {i.timezone.replace("_", " ")}
+                      {i.debtorEmail ? ` · ${i.name} is emailed too` : ""}
                       {i.lastError ? ` · ${i.lastError}` : ""}
                     </span>
                   </span>

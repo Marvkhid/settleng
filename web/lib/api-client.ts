@@ -125,6 +125,9 @@ export interface InvoiceInput {
 export const api = {
   me: () => request<Me>("/auth/me"),
   bootstrap: (b: { fullName: string; businessName: string }) => request<Me>("/auth/bootstrap", json("POST", b)),
+  /** Fire-and-forget "your account was just accessed" alert to the signed-in address. */
+  loginNotice: () =>
+    request<{ sent: boolean; reason: string | null }>("/auth/login-notice", json("POST")),
   updateBusiness: (b: { name: string }) =>
     request<{ business: { id: string; name: string; currency: string } }>("/auth/business", json("PATCH", b)),
   updateProfile: (b: { email?: string; password?: string }) => request<{ email?: string; passwordChanged?: boolean }>("/auth/me", json("PATCH", b)),

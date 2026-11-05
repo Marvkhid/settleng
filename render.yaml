@@ -36,3 +36,11 @@ services:
         sync: false
       - key: RESEND_FROM      # optional, defaults to the verified sender configured in the API
         sync: false
+      - key: EMAIL_PROVIDER   # gmail (temporary) or resend (production); omit to auto-detect
+        sync: false
+      - key: GMAIL_USER       # the Gmail address reminder and signup emails are sent from
+        sync: false
+      - key: GMAIL_APP_PASSWORD  # Google app password for that account - not the account password
+        sync: false
+      - key: GMAIL_FROM       # optional display sender, defaults to "SettleNG <GMAIL_USER>"
+        sync: false

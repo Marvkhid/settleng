@@ -206,11 +206,15 @@ export interface ReminderDelivery {
 }
 export interface RemindersOverview {
   email: string | null; schedulerConfigured: boolean; emailConfigured: boolean;
+  /** Which provider the reminder emails go through, when the API reports it. */
+  emailProvider?: "gmail" | "resend";
   totals: { enabled: number; paused: number; active: number; outstanding: string; nextRunAt: string | null };
   items: Array<{
     debtId: string; name: string; description: string; balance: string; status: string;
     enabled: boolean; paused: boolean; active: boolean; frequency: ReminderFrequency; times: string[];
     timezone: string; nextRunAt: string | null; lastSentAt: string | null; lastError: string | null; email: string;
+    /** The debtor's address on the debt: it receives its own copy of the reminder. */
+    debtorEmail?: string | null;
   }>;
   history: ReminderDelivery[];
 }

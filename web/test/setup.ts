@@ -111,6 +111,7 @@ export function resetSupabaseAuth() {
 export interface TestApiMock {
   me: Mock;
   bootstrap: Mock;
+  loginNotice: Mock;
   updateProfile: Mock;
   deleteAccount: Mock;
 }
@@ -121,6 +122,7 @@ export function testApiMock(): TestApiMock {
     g.__testApiMock = {
       me: vi.fn(),
       bootstrap: vi.fn(),
+      loginNotice: vi.fn().mockResolvedValue({ sent: false, reason: "not_configured" }),
       updateProfile: vi.fn(),
       deleteAccount: vi.fn(),
     };
@@ -132,6 +134,7 @@ export function resetTestApiMock() {
   const m = testApiMock();
   m.me.mockClear();
   m.bootstrap.mockClear();
+  m.loginNotice.mockClear();
   m.updateProfile.mockClear();
   m.deleteAccount.mockClear();
 }

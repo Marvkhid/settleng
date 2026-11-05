@@ -14,6 +14,7 @@ import { currentUserEmail, currentUserId, requireRole } from '../auth/tenant-con
 import { computeDebt, type DebtWithRepayments } from '../debts/debt-view';
 import { NotificationProviders } from '../recovery/notification.provider';
 import { renderReminderEmail } from './reminder-email';
+import { renderDebtorReminderEmail } from './debtor-reminder-email';
 import { formatNaira } from './money-format';
 import {
   DEFAULT_TIMEZONE,
@@ -44,12 +45,29 @@ type ReminderWithDebt = {
   debt: {
     id: string;
     counterpartyName: string;
+    counterpartyEmail: string | null;
+    direction: string;
+    description: string;
     principal: unknown;
     dueOn: Date | null;
     override: string | null;
     repayments: unknown[];
     workspace: { name: string };
   };
+};
+
+/** Everything one scheduler window sends to one owner, plus the debtor copies it owes. */
+type DeliveryGroup = {
+  workspaceId: string;
+  ownerUserId: string;
+  email: string;
+  businessName: string;
+  timezone: string;
+  slot: Date;
+  debts: { id: string; name: string; balance: string }[];
+  reminderIds: string[];
+  /** One entry per debtor address on the debts in this window, holding only their own debt. */
+  debtorCopies: Map<string, { debtId: string; debts: { description: string; balance: string }[] }>;
 };
 
 @Injectable()
@@ -246,6 +264,7 @@ export class DebtRemindersService {
         lastSentAt: r.lastSentAt?.toISOString() ?? null,
         lastError: r.lastError,
         email: r.email,
+        debtorEmail: r.debt.counterpartyEmail,
       };
     });
     const active = items.filter((i) => i.active);
@@ -257,7 +276,8 @@ export class DebtRemindersService {
     return {
       email: currentUserEmail(),
       schedulerConfigured: Boolean(process.env.CRON_SECRET),
-      emailConfigured: Boolean(process.env.RESEND_API_KEY),
+      emailConfigured: this.providers.emailConfigured(),
+      emailProvider: this.providers.emailProviderName(),
       totals: {
         enabled: items.filter((i) => i.enabled).length,
         paused: items.filter((i) => i.enabled && i.paused).length,
@@ -318,18 +338,7 @@ export class DebtRemindersService {
       take: 200,
     })) as unknown as ReminderWithDebt[];
 
-    const groups = new Map<
-      string,
-      {
-        workspaceId: string;
-        ownerUserId: string;
-        email: string;
-        timezone: string;
-        slot: Date;
-        debts: { id: string; name: string; balance: string }[];
-        reminderIds: string[];
-      }
-    >();
+    const groups = new Map<string, DeliveryGroup>();
     const today = todayInLagos();
     let skipped = 0;
 
@@ -361,14 +370,16 @@ export class DebtRemindersService {
         continue;
       }
       const key = `${r.workspaceId}|${r.ownerUserId}|${slot.toISOString()}`;
-      const g = groups.get(key) ?? {
+      const g: DeliveryGroup = groups.get(key) ?? {
         workspaceId: r.workspaceId,
         ownerUserId: r.ownerUserId,
         email: r.email,
+        businessName: r.debt.workspace.name,
         timezone: r.timezone,
         slot,
         debts: [],
         reminderIds: [],
+        debtorCopies: new Map(),
       };
       g.debts.push({
         id: r.debt.id,
@@ -376,10 +387,27 @@ export class DebtRemindersService {
         balance: computed.view.balance,
       });
       g.reminderIds.push(r.id);
+      // The address typed on the debt also gets its own copy, never the owner's consolidated one.
+      const debtorEmail = r.debt.counterpartyEmail?.trim().toLowerCase();
+      if (debtorEmail && r.debt.direction === 'OWED_TO_ME') {
+        const copy =
+          g.debtorCopies.get(debtorEmail) ??
+          ({ debtId: r.debt.id, debts: [] as { description: string; balance: string }[] });
+        copy.debts.push({
+          description: r.debt.description || r.debt.counterpartyName,
+          balance: computed.view.balance,
+        });
+        g.debtorCopies.set(debtorEmail, copy);
+      }
       groups.set(key, g);
     }
 
-    const results: { windowKey: string; status: string; debtCount: number }[] = [];
+    const results: {
+      windowKey: string;
+      status: string;
+      debtCount: number;
+      debtorNotified?: number;
+    }[] = [];
     for (const [key, g] of groups) {
       const windowKey = `${g.workspaceId}:${g.ownerUserId}:${g.slot.toISOString()}`;
       if (!g.email) {
@@ -488,7 +516,42 @@ export class DebtRemindersService {
           },
         });
       });
-      results.push({ windowKey, status, debtCount: g.debts.length });
+      // Each debtor with an email on the debt receives their own reminder, never anyone else's.
+      let debtorNotified = 0;
+      for (const [address, copy] of g.debtorCopies) {
+        const debtorContent = renderDebtorReminderEmail({
+          businessName: g.businessName,
+          debts: copy.debts,
+          total: formatNaira(money(copy.debts.reduce((s, d) => s.plus(D(d.balance)), D(0)))),
+          appUrl: APP_URL(),
+        });
+        const toDebtor = await this.providers.send({
+          channel: 'EMAIL',
+          to: address,
+          subject: debtorContent.subject,
+          text: debtorContent.text,
+          html: debtorContent.html,
+        });
+        if (toDebtor.ok) debtorNotified++;
+        // Recorded in the recovery log so the owner can see the debtor was actually told.
+        try {
+          await this.prisma.notificationLog.create({
+            data: {
+              workspaceId: g.workspaceId,
+              debtId: copy.debtId,
+              channel: 'EMAIL',
+              provider: toDebtor.provider,
+              providerMessageId: toDebtor.messageId ?? null,
+              status: toDebtor.ok ? 'SENT' : toDebtor.skippedReason ? 'SKIPPED' : 'FAILED',
+              errorCode: toDebtor.skippedReason ?? toDebtor.errorCode ?? null,
+            },
+          });
+        } catch (err) {
+          this.log.warn('Could not record the debtor reminder copy: ' + String(err));
+        }
+      }
+
+      results.push({ windowKey, status, debtCount: g.debts.length, debtorNotified });
     }
     this.log.log(
       `Reminder dispatch: ${results.filter((r) => r.status === 'SENT').length} sent, ${skipped} skipped`,

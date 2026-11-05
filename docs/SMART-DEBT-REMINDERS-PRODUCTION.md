@@ -8,7 +8,10 @@ signed out or offline.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `RESEND_API_KEY` | yes | Sends the reminder email. Without it every delivery is recorded as `SKIPPED` (`no_provider`), never as sent. |
+| `EMAIL_PROVIDER` | no | `gmail` or `resend`. Left unset, the API uses Gmail when its credentials exist, otherwise Resend. |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | one provider | Gmail SMTP (`smtp.gmail.com:587`, STARTTLS). The app password is the 16-character Google **app password**, never the account password. |
+| `GMAIL_FROM` | no | Display sender for Gmail, defaults to `SettleNG <GMAIL_USER>`. |
+| `RESEND_API_KEY` | one provider | Resend, kept for production. Without a configured provider every delivery is recorded as `SKIPPED` (`provider_not_configured`), never as sent. |
 | `CRON_SECRET` | yes | Shared secret the scheduler presents. Unset ⇒ the dispatch endpoint returns **404** so it cannot be probed; wrong secret ⇒ **403**. |
 | `APP_URL` | yes | Public site origin used for the debt links in every email (e.g. `https://settleng.com`). Defaults to `http://localhost:3000`. |
 | `RESEND_BASE_URL` | no | Overrides the Resend endpoint (`https://api.resend.com`). Used by the local test sink; leave unset in production. |
@@ -97,7 +100,10 @@ Nothing here is proof until the email is read in the owner's real inbox.
 | `CORS_ORIGIN` | the deployed web origin, e.g. `https://settleng.vercel.app` |
 | `APP_URL` | same public origin; used inside reminder email links |
 | `CRON_SECRET` | `openssl rand -hex 32` — paste the same value into the cron job |
-| `RESEND_API_KEY` | Resend API key (server-side only; never in the web app) |
+| `EMAIL_PROVIDER` | `gmail` (temporary) or `resend` (production) |
+| `GMAIL_USER` | the sending Gmail address |
+| `GMAIL_APP_PASSWORD` | its Google app password (server-side only) |
+| `RESEND_API_KEY` | Resend API key, used when `EMAIL_PROVIDER=resend` (server-side only) |
 
 `render.yaml` already declares these with `sync: false`, so Render prompts for them on first deploy.
 

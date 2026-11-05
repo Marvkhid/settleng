@@ -1043,13 +1043,23 @@ describe('CSV reconciliation', () => {
     await as(tokenA).post('/reconciliation/rows/ghost/confirm').expect(404);
   });
 
-  it('enforces file rules: csv only, present, and size/row limits', async () => {
+  it('enforces file rules: unsupported types, present, and size/row limits', async () => {
     await as(tokenA).post('/reconciliation/preview').expect(400);
+    // Word documents cannot be read reliably, so they are refused rather than guessed at.
     await request(app.getHttpServer() as App)
       .post('/api/reconciliation/preview')
       .set('Authorization', `Bearer ${tokenA}`)
-      .attach('file', Buffer.from('a'), 'notes.txt')
+      .attach('file', Buffer.from('a'), 'notes.docx')
       .expect(400);
+    // Plain-text bank exports ARE supported on purpose (widen-statement-uploads change), so a .txt
+    // statement must be read like a CSV instead of being rejected.
+    const txt = await upload(
+      [`${addDaysIso(TODAY, -1)},Plain text export,500,credit,`],
+      'statement.txt',
+      undefined,
+      '/reconciliation/preview',
+    ).expect(200);
+    expect(txt.body.rows.length).toBeGreaterThan(0);
     const many = Array.from(
       { length: 501 },
       () => `${addDaysIso(TODAY, -1)},x,1,credit,`,

@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Turnstile, captchaConfigured } from "@/components/auth/turnstile";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { api } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase/client";
 
 /** Plain-English explanation for each failure code a Supabase email link can report. */
@@ -73,8 +74,13 @@ function LoginForm() {
         setCaptchaRound((r) => r + 1);
         return;
       }
-      // Informational only, fired and forgotten: a mail failure must never keep anyone out.
-      void fetch("/api/login-notice", { method: "POST" }).catch(() => {});
+      // Informational only, fired and forgotten: a mail failure must never keep anyone out. The API
+      // sends it through whichever provider is configured (Gmail today, Resend for production).
+      try {
+        void api.loginNotice().catch(() => {});
+      } catch {
+        /* the alert is informational only — never block the sign-in */
+      }
       router.replace(next);
       router.refresh();
     } catch {

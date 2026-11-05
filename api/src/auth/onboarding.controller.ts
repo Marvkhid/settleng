@@ -14,6 +14,12 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseAdminService } from './supabase-admin';
 import { UserId } from './user.decorator';
+import { sendWelcomeEmail } from '../notifications/welcome-email';
+import { lagosNow, sendLoginNotice } from '../notifications/login-notice-email';
+
+/** One "account was just accessed" alert per user per window, per server instance. */
+const recentLoginNotice = new Map<string, number>();
+const LOGIN_NOTICE_WINDOW_MS = 5 * 60 * 1000;
 import {
   currentBusinessId,
   currentUserEmail,
@@ -161,6 +167,15 @@ export class AuthController {
       return created;
     });
 
+    // The alert goes to the address they signed up with, as soon as the account is real. It is
+    // awaited (so the mail is not cut off when the request ends) but can never fail the sign-up.
+    await sendWelcomeEmail({
+      to: currentUserEmail(),
+      firstName: fullName.split(/\s+/)[0] || fullName,
+      businessName: workspace.name,
+      appUrl: (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
+    });
+
     return {
       userId,
       fullName,
@@ -182,6 +197,30 @@ export class AuthController {
         },
       ],
     };
+  }
+
+  /**
+   * "Your account was just accessed", sent to the signed-in user's own address — the one they
+   * signed in with. It never blocks or fails the sign-in, and it is throttled per user so repeated
+   * logins cannot be used to flood a mailbox.
+   */
+  @Post('login-notice')
+  @HttpCode(200)
+  async loginNotice(@UserId() userId: string) {
+    const email = currentUserEmail();
+    if (!email) return { sent: false, reason: 'no_recipient' };
+    const now = Date.now();
+    if (now - (recentLoginNotice.get(userId) ?? 0) < LOGIN_NOTICE_WINDOW_MS)
+      return { sent: false, reason: 'already_sent' };
+    recentLoginNotice.set(userId, now);
+    const profile = await this.prisma.profile.findUnique({ where: { userId } });
+    const result = await sendLoginNotice({
+      to: email,
+      firstName: (profile?.fullName ?? currentUserName() ?? '').trim().split(/\s+/)[0] || 'there',
+      when: lagosNow(),
+      appUrl: (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
+    });
+    return { sent: result.ok, reason: result.skippedReason ?? result.errorCode ?? null };
   }
 
   /**

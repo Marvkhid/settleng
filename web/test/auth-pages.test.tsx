@@ -48,6 +48,7 @@ export function testApiMock() {
     g.__testApiMock = {
       me: vi.fn(),
       bootstrap: vi.fn(),
+      loginNotice: vi.fn().mockResolvedValue({ sent: false, reason: "not_configured" }),
       updateProfile: vi.fn(),
       deleteAccount: vi.fn(),
     };
@@ -59,6 +60,7 @@ export function resetTestApiMock() {
   const m = testApiMock();
   m.me.mockClear();
   m.bootstrap.mockClear();
+  m.loginNotice.mockClear();
   m.updateProfile.mockClear();
   m.deleteAccount.mockClear();
 }
@@ -129,6 +131,7 @@ describe("login page", () => {
     }));
     expect(mockRouter.replace).toHaveBeenCalledWith("/dashboard");
     expect(mockRouter.refresh).toHaveBeenCalled(); // refresh is called on successful sign in
+    expect(testApiMock().loginNotice).toHaveBeenCalled(); // the "account was accessed" alert
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

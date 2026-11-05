@@ -1,4 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  emailConfigured,
+  emailProvider,
+  emailProviderName,
+} from '../notifications/email-provider';
 
 export interface SendInput {
   channel: 'EMAIL' | 'WHATSAPP' | 'SMS';
@@ -23,15 +28,23 @@ export interface SendResult {
  * `provider_not_configured` and the caller records SKIPPED, so the UI never claims a message was
  * delivered when it was not.
  *
- * Email uses Resend's HTTP API (Render's free tier blocks outbound SMTP). WhatsApp uses the
- * Meta WhatsApp Cloud API with an approved template. SMS uses Termii's HTTP API.
- *
- * RESEND_BASE_URL exists so delivery can be verified end-to-end against a local sink in tests;
- * production always uses the default Resend endpoint.
+ * Email is delegated to the configured provider in `notifications/` — Gmail SMTP today, Resend
+ * kept intact for production, chosen by `EMAIL_PROVIDER` or by whichever one is configured.
+ * WhatsApp uses the Meta WhatsApp Cloud API with an approved template. SMS uses Termii's HTTP API.
  */
 @Injectable()
 export class NotificationProviders {
   private readonly log = new Logger(NotificationProviders.name);
+
+  /** True when the selected email provider has its credentials. Never reveals them. */
+  emailConfigured(): boolean {
+    return emailConfigured();
+  }
+
+  /** `gmail` or `resend`, so the UI can say which one is in use. */
+  emailProviderName(): string {
+    return emailProviderName();
+  }
 
   async send(input: SendInput): Promise<SendResult> {
     if (input.channel === 'EMAIL') return this.email(input);
@@ -54,43 +67,14 @@ export class NotificationProviders {
   }
 
   private async email(input: SendInput): Promise<SendResult> {
-    const key = process.env.RESEND_API_KEY;
-    if (!key) {
-      return {
-        ok: false,
-        provider: 'resend',
-        skippedReason: 'provider_not_configured',
-      };
-    }
-    // render.yaml ships RESEND_FROM while older envs use REMINDER_FROM. Accept either name so a
-    // configured production sender is never silently ignored.
-    const from =
-      process.env.REMINDER_FROM ?? process.env.RESEND_FROM ?? 'SettleNG <onboarding@resend.dev>';
-    const base = (process.env.RESEND_BASE_URL ?? 'https://api.resend.com').replace(/\/$/, '');
-    try {
-      const { res, body } = await this.post(
-        `${base}/emails`,
-        {
-          from,
-          to: [input.to],
-          subject: input.subject,
-          text: input.text,
-          ...(input.html ? { html: input.html } : {}),
-        },
-        { Authorization: `Bearer ${key}` },
-      );
-      if (!res.ok)
-        return {
-          ok: false,
-          provider: 'resend',
-          errorCode: `http_${res.status}`,
-        };
-      const parsed = JSON.parse(body || '{}') as { id?: string };
-      return { ok: true, provider: 'resend', messageId: parsed.id };
-    } catch (err) {
-      this.log.warn(`Resend request failed: ${String(err)}`);
-      return { ok: false, provider: 'resend', errorCode: 'network_error' };
-    }
+    // The provider owns configuration checks and error codes; nothing here claims success unless
+    // the provider accepted the message.
+    return emailProvider().send({
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+    });
   }
 
   private async whatsapp(input: SendInput): Promise<SendResult> {

@@ -463,8 +463,8 @@ enum SmartDeliveryStatus {
   SKIPPED
 }
 
-/// Per-debt automatic reminder settings. The email always goes to the workspace owner, never to the
-/// debtor: SettleNG nudges the person who is owed money, it never chases the person who owes it.
+/// Per-debt automatic reminder settings. The owner's copy is the consolidated nudge; a debtor with an
+/// email address on the debt additionally gets their own copy, listing only their balance.
 model DebtReminder {
   id           String            @id @default(cuid())
   debtId       String            @unique
